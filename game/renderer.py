@@ -113,6 +113,8 @@ class Renderer:
             self._render_title(gs)
         elif s == STATE_MODE_SELECT:
             self._render_mode_select(gs)
+        elif s == STATE_SCENE:
+            self._render_scene(gs)
         elif s == STATE_CHAPTER_INTRO:
             self._render_chapter_intro(gs)
         elif s in (STATE_PLAYER_TURN, STATE_ENEMY_TURN, STATE_ALLY_TURN,
@@ -249,6 +251,107 @@ class Renderer:
         for h in hints:
             self._blit_center(self.font_sm.render(h, True, LIGHT_GREY), cx, hy)
             hy += 22
+
+    # ── Pre-battle Scene Dialog ───────────────────────────────────────────────
+    def _render_scene(self, gs):
+        """
+        Visual-novel style scene: full dark background, left portrait box,
+        speaker name bar, and dialogue text box at bottom — like Fire Emblem DS.
+        """
+        from game.scene_dialogs import PORTRAIT_COLORS
+        ch  = gs.current_chapter
+        idx = gs.scene_dialog_idx
+        lines = gs.scene_dialog
+
+        if not lines or idx >= len(lines):
+            return
+
+        speaker_key, display_name, text = lines[idx]
+        total = len(lines)
+
+        W, H = SCREEN_WIDTH, SCREEN_HEIGHT
+
+        # ── Background ────────────────────────────────────────────────────────
+        # Dark ink-wash gradient
+        for i in range(H):
+            t = i / H
+            r = int(8  + t * 20)
+            g = int(8  + t * 15)
+            b = int(18 + t * 30)
+            pygame.draw.line(self.screen, (r, g, b), (0, i), (W, i))
+
+        # Subtle chapter label top-left
+        ch_surf = self.font_sm.render(f"{ch.title}  ·  {ch.subtitle}", True, (120, 100, 60))
+        self.screen.blit(ch_surf, (20, 14))
+
+        # ── Portrait box (left side, mid-screen) ─────────────────────────────
+        portrait_color = PORTRAIT_COLORS.get(speaker_key, (60, 60, 80))
+        pw, ph = 160, 200
+        px, py = 40, H // 2 - ph // 2 - 30
+
+        # Shadow
+        shadow = pygame.Surface((pw + 6, ph + 6), pygame.SRCALPHA)
+        shadow.fill((0, 0, 0, 120))
+        self.screen.blit(shadow, (px - 2, py + 4))
+
+        # Portrait panel
+        pygame.draw.rect(self.screen, portrait_color, (px, py, pw, ph))
+        pygame.draw.rect(self.screen, GOLD, (px, py, pw, ph), 3)
+
+        # Speaker initial / icon centred in portrait
+        initial = display_name[0].upper() if display_name else "?"
+        ic = self.font_title.render(initial, True, (255, 255, 255, 180))
+        self.screen.blit(ic, (px + pw // 2 - ic.get_width() // 2,
+                               py + ph // 2 - ic.get_height() // 2))
+
+        # ── Dialogue box (bottom strip) ───────────────────────────────────────
+        box_h   = 180
+        box_y   = H - box_h - 10
+        box_x   = 30
+        box_w   = W - 60
+
+        # Semi-transparent backing
+        dlg_surf = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+        dlg_surf.fill((10, 12, 30, 220))
+        self.screen.blit(dlg_surf, (box_x, box_y))
+        pygame.draw.rect(self.screen, GOLD, (box_x, box_y, box_w, box_h), 2)
+
+        # Speaker name bar
+        name_bar_h = 30
+        name_bar_surf = pygame.Surface((200, name_bar_h), pygame.SRCALPHA)
+        name_bar_surf.fill((*portrait_color, 230))
+        self.screen.blit(name_bar_surf, (box_x + 10, box_y - name_bar_h + 2))
+        pygame.draw.rect(self.screen, GOLD,
+                         (box_x + 10, box_y - name_bar_h + 2, 200, name_bar_h), 1)
+        name_surf = self.font_md.render(display_name, True, WHITE)
+        self.screen.blit(name_surf, (box_x + 18, box_y - name_bar_h + 6))
+
+        # Dialogue text (wrapped)
+        text_x = box_x + 20
+        text_y = box_y + 18
+        max_chars = (box_w - 40) // 8   # approximate chars per line at font_md
+        wrapped = self._wrap(text, max_chars)
+        for wline in wrapped[:5]:   # max 5 lines in box
+            self.screen.blit(self.font_md.render(wline, True, CREAM), (text_x, text_y))
+            text_y += 28
+
+        # ── Progress dots and advance hint ────────────────────────────────────
+        dot_y = box_y + box_h - 22
+        dot_spacing = 14
+        dot_start_x = box_x + 20
+        for i in range(total):
+            col = GOLD if i == idx else (80, 70, 40)
+            pygame.draw.circle(self.screen, col,
+                               (dot_start_x + i * dot_spacing, dot_y), 4)
+
+        hint = "Z / Enter / Tap  ▶  to continue"
+        hint_surf = self.font_sm.render(hint, True, (160, 150, 100))
+        self.screen.blit(hint_surf,
+                         (W - hint_surf.get_width() - 30, dot_y - 6))
+
+        # ── Line counter top-right ─────────────────────────────────────────────
+        ctr = self.font_sm.render(f"{idx+1} / {total}", True, (120, 110, 70))
+        self.screen.blit(ctr, (W - ctr.get_width() - 20, 14))
 
     # ── Chapter Intro ─────────────────────────────────────────────────────────
     def _render_chapter_intro(self, gs):

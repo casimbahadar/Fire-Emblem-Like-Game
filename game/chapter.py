@@ -6,6 +6,7 @@ import copy
 from game.constants import *
 from game.unit import create_unit_roster
 from game.map import MAP_BUILDERS
+from game.scene_dialogs import CHAPTER_SCENES
 
 
 class ReinforcementWave:
@@ -41,6 +42,9 @@ class Chapter:
         self.turn_limit        = turn_limit
         self.reinforcements    = reinforcements or []
         self.seize_unit        = seize_unit   # which lord seizes
+        # Pre-battle scene dialog: list of (speaker_key, display_name, line)
+        idx = number - 1   # chapters numbered 1–20
+        self.scene_dialog = CHAPTER_SCENES[idx] if 0 <= idx < len(CHAPTER_SCENES) else []
 
     def build(self, roster):
         """Instantiate chapter. Returns (game_map, player_units, enemy_units, ally_units, reinf_waves)."""

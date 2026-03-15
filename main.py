@@ -180,6 +180,15 @@ def main():
                 gs.state = STATE_TITLE
             return
 
+        # ── Pre-battle scene dialog ───────────────────────────────────────────
+        if gs.state == STATE_SCENE:
+            if action in ("confirm", "any_key", "cancel"):
+                gs.scene_dialog_idx += 1
+                if gs.scene_dialog_idx >= len(gs.scene_dialog):
+                    # Scene finished → go to chapter intro
+                    gs.state = STATE_CHAPTER_INTRO
+            return
+
         # ── Boss dialog ───────────────────────────────────────────────────────
         if showing_boss_dialog:
             if action in ("confirm","any_key","attack","cancel"):
@@ -433,6 +442,8 @@ def main():
                     else:
                         gs._mode_cursor = 1
                     do_action("confirm")
+                elif gs.state == STATE_SCENE:
+                    do_action("confirm")
                 elif gs.state == STATE_CHAPTER_INTRO:
                     gs.start_player_turn()
                     renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
@@ -470,6 +481,12 @@ def main():
                         start_tutorial()
                     elif key == pygame.K_ESCAPE:
                         gs.state = STATE_TITLE
+
+                # ── Pre-battle scene dialog ───────────────────────────────────
+                elif gs.state == STATE_SCENE:
+                    if key in (pygame.K_RETURN, pygame.K_z, pygame.K_SPACE,
+                               pygame.K_x, pygame.K_ESCAPE):
+                        do_action("confirm")
 
                 # ── Chapter intro ─────────────────────────────────────────────
                 elif gs.state == STATE_CHAPTER_INTRO:

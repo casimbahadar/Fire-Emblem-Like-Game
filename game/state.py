@@ -66,6 +66,10 @@ class GameState:
         # Tutorial
         self.tutorial = TutorialManager()
 
+        # Pre-battle scene dialog state
+        self.scene_dialog     = []   # list of (speaker_key, display_name, line)
+        self.scene_dialog_idx = 0    # current line being shown
+
         # Boss dialog state
         self.pending_dialog       = None   # list of (speaker, text) or None
         self.pending_dialog_idx   = 0
@@ -117,7 +121,17 @@ class GameState:
             u.reset_turn()
 
         self.ai_controller = EnemyAI(self)
-        self.state = STATE_CHAPTER_INTRO
+
+        # Pre-battle scene dialog → shows before chapter intro
+        ch = self.current_chapter
+        if ch.scene_dialog:
+            self.scene_dialog     = ch.scene_dialog
+            self.scene_dialog_idx = 0
+            self.state = STATE_SCENE
+        else:
+            self.scene_dialog     = []
+            self.scene_dialog_idx = 0
+            self.state = STATE_CHAPTER_INTRO
 
         # Cursor to first player lord
         lords = [u for u in self.player_units if u.is_lord and u.alive]

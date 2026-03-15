@@ -375,6 +375,7 @@ CLASS_DATA = {
 # ─── Game states ──────────────────────────────────────────────────────────────
 STATE_TITLE         = "title"
 STATE_MODE_SELECT   = "mode_select"
+STATE_SCENE         = "scene"          # pre-battle character dialogue cutscene
 STATE_CHAPTER_INTRO = "chapter_intro"
 STATE_PLAYER_TURN   = "player_turn"
 STATE_ENEMY_TURN    = "enemy_turn"
