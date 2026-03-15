@@ -1,5 +1,6 @@
 """
-Combat resolution system for Sengoku Tactics
+Combat resolution for Sengoku Tactics
+Two-RN hit system, doubles, crits, weapon triangle, anti-type bonuses.
 """
 import random
 from game.constants import *
@@ -8,73 +9,55 @@ from game.weapon import WEAPON_STAFF
 
 class CombatResult:
     def __init__(self):
-        self.attacker_name  = ""
-        self.defender_name  = ""
-        self.rounds         = []   # list of RoundResult
-        self.attacker_died  = False
-        self.defender_died  = False
-        self.exp_attacker   = 0
-        self.exp_defender   = 0
-        self.level_up_att   = False
-        self.level_up_def   = False
+        self.attacker_name = ""
+        self.defender_name = ""
+        self.rounds        = []
+        self.attacker_died = False
+        self.defender_died = False
+        self.exp_attacker  = 0
+        self.exp_defender  = 0
+        self.level_up_att  = False
+        self.level_up_def  = False
 
 
 class RoundResult:
     def __init__(self, attacker, damage, hit, crit, is_counter=False):
-        self.attacker   = attacker  # unit name
+        self.attacker   = attacker
         self.damage     = damage
-        self.hit        = hit       # bool: did it hit
-        self.crit       = crit      # bool: was it a crit
+        self.hit        = hit
+        self.crit       = crit
         self.is_counter = is_counter
 
 
 def resolve_combat(attacker, defender, terrain_attacker=None, terrain_defender=None):
-    """
-    Full Fire Emblem-style combat resolution.
-    Returns a CombatResult with all rounds played and final state.
-    """
     result = CombatResult()
     result.attacker_name = attacker.name
     result.defender_name = defender.name
 
-    # Apply terrain bonuses
-    if terrain_attacker:
-        td = TERRAIN_DATA[terrain_attacker]
-        attacker.set_terrain_bonuses(td["def"], td["avo"])
-    else:
-        attacker.set_terrain_bonuses(0, 0)
+    _apply_terrain(attacker, terrain_attacker)
+    _apply_terrain(defender, terrain_defender)
 
-    if terrain_defender:
-        td = TERRAIN_DATA[terrain_defender]
-        defender.set_terrain_bonuses(td["def"], td["avo"])
-    else:
-        defender.set_terrain_bonuses(0, 0)
-
-    att_weapon = attacker.equipped
-    def_weapon = defender.equipped
-
-    # Check if defender can counter-attack
     can_counter = _can_counter(attacker, defender)
 
-    # Attacker strikes first
-    rnd = _strike(attacker, defender, is_counter=False)
+    # First strike
+    rnd = _strike(attacker, defender)
     result.rounds.append(rnd)
     if rnd.hit:
         defender.take_damage(rnd.damage)
 
-    # Defender counter-attacks (if alive and in range)
+    # Counter
     if defender.alive and can_counter:
         rnd2 = _strike(defender, attacker, is_counter=True)
         result.rounds.append(rnd2)
         if rnd2.hit:
             attacker.take_damage(rnd2.damage)
 
-    # Double attack: attacker's spd - defender's spd >= 4 → attacker strikes again
+    # Double attacks
     if attacker.alive and defender.alive:
-        att_spd = _effective_speed(attacker)
-        def_spd = _effective_speed(defender)
+        att_spd = _effective_spd(attacker)
+        def_spd = _effective_spd(defender)
         if att_spd - def_spd >= 4:
-            rnd3 = _strike(attacker, defender, is_counter=False)
+            rnd3 = _strike(attacker, defender)
             result.rounds.append(rnd3)
             if rnd3.hit:
                 defender.take_damage(rnd3.damage)
@@ -87,23 +70,19 @@ def resolve_combat(attacker, defender, terrain_attacker=None, terrain_defender=N
     result.attacker_died = not attacker.alive
     result.defender_died = not defender.alive
 
-    # EXP calculation
-    level_diff = defender.level - attacker.level
-    base_exp = max(1, 20 + level_diff * 2)
-    kill_bonus = 40 if result.defender_died else 0
-    result.exp_attacker = base_exp + kill_bonus
+    # EXP
+    ld  = defender.level - attacker.level
+    exp = max(1, 20 + ld * 2) + (40 if result.defender_died else 0)
+    result.exp_attacker = exp
 
     if can_counter:
-        base_def_exp = max(1, 15 + (attacker.level - defender.level))
-        kill_bonus_def = 40 if result.attacker_died else 0
-        result.exp_defender = base_def_exp + kill_bonus_def
+        ld2 = attacker.level - defender.level
+        exp2= max(1, 15 + ld2) + (40 if result.attacker_died else 0)
+        result.exp_defender = exp2
 
-    # Award EXP
     if not result.attacker_died:
-        att_w = attacker.equipped
-        if att_w and att_w.weapon_type == WEAPON_STAFF:
-            pass  # Healers get exp from heal action
-        else:
+        w = attacker.equipped
+        if not (w and w.weapon_type == WEAPON_STAFF and "heal" in w.weapon_id):
             result.level_up_att = attacker.gain_exp(result.exp_attacker)
 
     if not result.defender_died and can_counter:
@@ -113,65 +92,68 @@ def resolve_combat(attacker, defender, terrain_attacker=None, terrain_defender=N
 
 
 def resolve_heal(healer, target):
-    """Healer uses staff on target. Returns heal amount."""
     w = healer.equipped
     if w is None or w.weapon_type != WEAPON_STAFF:
         return 0
-    heal_amount = healer.mag + 10  # base heal
-    if w.weapon_id == "mend_staff":
-        heal_amount = healer.mag + 20
-    target.heal(heal_amount)
-    exp = max(10, 20 - abs(healer.level - target.level))
-    healer.gain_exp(exp)
-    return heal_amount
+    if "mend" in w.weapon_id:
+        amount = healer.mag + 20
+    elif "physic" in w.weapon_id or "amulet" in w.weapon_id:
+        amount = healer.mag + 15
+    else:
+        amount = healer.mag + 10
+    target.heal(amount)
+    healer.gain_exp(max(10, 20 - abs(healer.level - target.level)))
+    return amount
 
 
-def _effective_speed(unit):
+def _apply_terrain(unit, terrain):
+    if terrain and terrain in TERRAIN_DATA:
+        td = TERRAIN_DATA[terrain]
+        unit.set_terrain_bonuses(td["def"], td["avo"])
+    else:
+        unit.set_terrain_bonuses(0, 0)
+
+
+def _effective_spd(unit):
     w = unit.equipped
     if w is None:
         return unit.spd
-    weight_pen = max(0, w.weight - unit.str_ // 2)
-    return max(0, unit.spd - weight_pen)
+    pen = max(0, w.weight - unit.str_ // 2)
+    return max(0, unit.spd - pen)
 
 
 def _can_counter(attacker, defender):
-    """Check if defender can counter-attack from their position."""
-    if defender.equipped is None:
+    w = defender.equipped
+    if w is None:
         return False
-    if defender.equipped.weapon_type == WEAPON_STAFF and defender.equipped.weapon_id.endswith("staff"):
-        # Heal staff can't counter
-        return "heal" not in defender.equipped.weapon_id and "mend" not in defender.equipped.weapon_id
-    # Check range — since combat is resolved abstractly here, we assume adjacency
-    # The map will verify range before initiating combat
+    # Pure heal staves can't counter
+    if w.weapon_type == WEAPON_STAFF:
+        wid = getattr(w, 'weapon_id', '')
+        if "heal" in wid or "mend" in wid or "physic" in wid or "amulet" in wid:
+            return False
     return True
 
 
 def _strike(attacker, defender, is_counter=False):
-    att_weapon = attacker.equipped
-    def_weapon = defender.equipped
+    att_w = attacker.equipped
+    def_w = defender.equipped
 
-    # Hit calculation
-    hit_rate    = attacker.hit_rate(def_weapon)
-    dodge_rate  = defender.avoid()
-    actual_hit  = max(0, min(100, hit_rate - dodge_rate))
-    # Two RN system (average two random numbers — skews distribution)
-    roll1 = random.randint(0, 99)
-    roll2 = random.randint(0, 99)
-    avg_roll = (roll1 + roll2) // 2
-    did_hit = avg_roll < actual_hit
+    hit_rate   = attacker.hit_rate(def_w)
+    avoid_rate = defender.avoid()
+    actual_hit = max(0, min(100, hit_rate - avoid_rate))
 
-    # Crit calculation
-    crit_rate   = attacker.crit_rate(def_weapon)
-    crit_avoid  = defender.crit_avoid()
-    actual_crit = max(0, crit_rate - crit_avoid)
-    did_crit    = random.randint(0, 99) < actual_crit
+    # Two-RN system (skews distribution toward centre — fewer extreme results)
+    r1, r2 = random.randint(0, 99), random.randint(0, 99)
+    did_hit = (r1 + r2) // 2 < actual_hit
 
-    # Damage
-    atk   = attacker.attack_power(def_weapon)
-    def_  = defender.defense()
+    crit_rate  = max(0, attacker.crit_rate(def_w) - defender.crit_avoid())
+    did_crit   = random.randint(0, 99) < crit_rate
+
+    atk    = attacker.attack_power(def_w, target=defender)
+    def_   = defender.defense()
     damage = max(0, atk - def_)
     if did_crit:
-        damage = damage * 3  # crits triple damage like FE
+        damage *= 3  # Fire Emblem-style triple damage on crit
 
     if not did_hit:
         damage = 0

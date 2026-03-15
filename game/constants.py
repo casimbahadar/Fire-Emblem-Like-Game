@@ -1,17 +1,16 @@
 """
 Game constants for Sengoku Tactics: Age of the Warring States
+Inspired by Fire Emblem and Samurai Warriors
 """
 
 # Screen settings
-SCREEN_WIDTH = 1024
+SCREEN_WIDTH  = 1024
 SCREEN_HEIGHT = 768
-TILE_SIZE = 48
-FPS = 60
+TILE_SIZE     = 48
+FPS           = 60
 
-# Map display
-MAP_OFFSET_X = 0
-MAP_OFFSET_Y = 0
-UI_PANEL_WIDTH = 280
+# Map area / UI
+UI_PANEL_WIDTH = 290
 
 # Colors
 BLACK       = (0,   0,   0)
@@ -36,8 +35,19 @@ DARK_RED    = (140, 20,  20)
 PINK        = (230, 130, 130)
 TEAL        = (20,  160, 140)
 MAROON      = (100, 0,   30)
+SILVER      = (192, 192, 210)
+CRIMSON     = (180, 20,  50)
+INDIGO      = (60,  30,  130)
+SAGE        = (140, 170, 120)
+IVORY       = (240, 235, 215)
+COPPER      = (180, 100, 50)
+SLATE       = (80,  90,  110)
+SCARLET     = (210, 40,  40)
+EMERALD     = (30,  160, 80)
+VIOLET      = (140, 60,  180)
+AMBER       = (200, 150, 30)
 
-# Terrain types
+# ─── Terrain types ────────────────────────────────────────────────────────────
 TERRAIN_PLAIN    = "plain"
 TERRAIN_FOREST   = "forest"
 TERRAIN_MOUNTAIN = "mountain"
@@ -49,23 +59,33 @@ TERRAIN_VILLAGE  = "village"
 TERRAIN_SEA      = "sea"
 TERRAIN_CLIFF    = "cliff"
 TERRAIN_BRIDGE   = "bridge"
+TERRAIN_RUINS    = "ruins"
+TERRAIN_DESERT   = "desert"
+TERRAIN_PEAK     = "peak"
+TERRAIN_THICKET  = "thicket"
+TERRAIN_GATE     = "gate"
 
-# Terrain properties: (color, defense_bonus, avoid_bonus, move_cost, name)
+# Terrain properties: color, def bonus, avoid bonus, move cost, name
 TERRAIN_DATA = {
-    TERRAIN_PLAIN:    {"color": (140, 195, 100), "def": 0, "avo": 0, "move": 1, "name": "Plain"},
-    TERRAIN_FOREST:   {"color": (40,  120, 40),  "def": 1, "avo": 20,"move": 2, "name": "Forest"},
-    TERRAIN_MOUNTAIN: {"color": (140, 120, 100), "def": 2, "avo": 30,"move": 4, "name": "Mountain"},
-    TERRAIN_CASTLE:   {"color": (160, 160, 200), "def": 3, "avo": 30,"move": 1, "name": "Castle"},
-    TERRAIN_RIVER:    {"color": (80,  140, 210), "def": 0, "avo": 0, "move": 5, "name": "River"},
-    TERRAIN_ROAD:     {"color": (210, 190, 150), "def": 0, "avo": 0, "move": 1, "name": "Road"},
-    TERRAIN_FORT:     {"color": (170, 150, 130), "def": 2, "avo": 20,"move": 1, "name": "Fort"},
-    TERRAIN_VILLAGE:  {"color": (200, 175, 140), "def": 1, "avo": 10,"move": 1, "name": "Village"},
-    TERRAIN_SEA:      {"color": (50,  100, 200), "def": 0, "avo": 0, "move": 99,"name": "Sea"},
-    TERRAIN_CLIFF:    {"color": (100, 90,  80),  "def": 0, "avo": 0, "move": 99,"name": "Cliff"},
-    TERRAIN_BRIDGE:   {"color": (190, 170, 130), "def": 0, "avo": 0, "move": 1, "name": "Bridge"},
+    TERRAIN_PLAIN:    {"color": (140, 195, 100), "def": 0, "avo": 0,  "move": 1, "name": "Plain"},
+    TERRAIN_FOREST:   {"color": (40,  120, 40),  "def": 1, "avo": 20, "move": 2, "name": "Forest"},
+    TERRAIN_MOUNTAIN: {"color": (140, 120, 100), "def": 2, "avo": 30, "move": 4, "name": "Mountain"},
+    TERRAIN_CASTLE:   {"color": (160, 160, 200), "def": 3, "avo": 30, "move": 1, "name": "Castle"},
+    TERRAIN_RIVER:    {"color": (80,  140, 210), "def": 0, "avo": 0,  "move": 5, "name": "River"},
+    TERRAIN_ROAD:     {"color": (210, 190, 150), "def": 0, "avo": 0,  "move": 1, "name": "Road"},
+    TERRAIN_FORT:     {"color": (170, 150, 130), "def": 2, "avo": 20, "move": 1, "name": "Fort"},
+    TERRAIN_VILLAGE:  {"color": (200, 175, 140), "def": 1, "avo": 10, "move": 1, "name": "Village"},
+    TERRAIN_SEA:      {"color": (50,  100, 200), "def": 0, "avo": 0,  "move": 99,"name": "Sea"},
+    TERRAIN_CLIFF:    {"color": (100, 90,  80),  "def": 0, "avo": 0,  "move": 99,"name": "Cliff"},
+    TERRAIN_BRIDGE:   {"color": (190, 170, 130), "def": 0, "avo": 0,  "move": 1, "name": "Bridge"},
+    TERRAIN_RUINS:    {"color": (130, 115, 100), "def": 1, "avo": 10, "move": 2, "name": "Ruins"},
+    TERRAIN_DESERT:   {"color": (210, 195, 140), "def": 0, "avo": 0,  "move": 3, "name": "Desert"},
+    TERRAIN_PEAK:     {"color": (120, 100, 90),  "def": 3, "avo": 40, "move": 99,"name": "Peak"},
+    TERRAIN_THICKET:  {"color": (60,  100, 50),  "def": 1, "avo": 30, "move": 3, "name": "Thicket"},
+    TERRAIN_GATE:     {"color": (150, 140, 170), "def": 4, "avo": 30, "move": 1, "name": "Gate"},
 }
 
-# Weapon types
+# ─── Weapon types ─────────────────────────────────────────────────────────────
 WEAPON_KATANA   = "katana"
 WEAPON_YARI     = "yari"
 WEAPON_NAGINATA = "naginata"
@@ -74,41 +94,61 @@ WEAPON_TETSUBO  = "tetsubo"
 WEAPON_TANTO    = "tanto"
 WEAPON_NODACHI  = "nodachi"
 WEAPON_STAFF    = "staff"
+WEAPON_GUN      = "gun"        # Tanegashima / matchlock
+WEAPON_CHAIN    = "chain"      # Kusarigama chain-sickle
 
-# Weapon triangle advantages (attacker -> defender)
-# Katana > Tanto/Nodachi, Yari > Katana, Naginata > Yari, Tetsubo neutral
+# Weapon triangle (attacker type → {defender type: +1 advantage})
 WEAPON_TRIANGLE = {
-    WEAPON_YARI:     {WEAPON_KATANA: +1,  WEAPON_NODACHI: +1},
-    WEAPON_KATANA:   {WEAPON_NAGINATA: +1, WEAPON_TANTO: +1},
-    WEAPON_NAGINATA: {WEAPON_YARI: +1,    WEAPON_TETSUBO: +1},
+    WEAPON_YARI:     {WEAPON_KATANA: +1,    WEAPON_NODACHI: +1},
+    WEAPON_KATANA:   {WEAPON_NAGINATA: +1,  WEAPON_TANTO: +1},
+    WEAPON_NAGINATA: {WEAPON_YARI: +1,      WEAPON_TETSUBO: +1},
     WEAPON_NODACHI:  {WEAPON_NAGINATA: +1},
     WEAPON_TANTO:    {WEAPON_BOW: +1},
-    WEAPON_BOW:      {},
+    WEAPON_BOW:      {WEAPON_GUN: +1},       # archers outrun gun reload
+    WEAPON_GUN:      {WEAPON_KATANA: +1,    WEAPON_YARI: +1},  # guns pierce armor
+    WEAPON_CHAIN:    {WEAPON_KATANA: +1,    WEAPON_YARI: +1},
     WEAPON_TETSUBO:  {},
     WEAPON_STAFF:    {},
 }
 
-# Unit factions
+# ─── Unit factions ────────────────────────────────────────────────────────────
 FACTION_PLAYER = "player"
 FACTION_ENEMY  = "enemy"
 FACTION_ALLY   = "ally"
 
-# Unit classes
-CLASS_SAMURAI    = "Samurai"
-CLASS_ASHIGARU   = "Ashigaru"
-CLASS_CAVALRY    = "Cavalry"
-CLASS_ARCHER     = "Archer"
-CLASS_NINJA      = "Ninja"
-CLASS_MONK       = "Monk"
-CLASS_DAIMYO     = "Daimyo"
-CLASS_RONIN      = "Ronin"
-CLASS_ONMYOJI    = "Onmyoji"
-CLASS_BERSERKER  = "Berserker"
-CLASS_SPEARMAN   = "Spearman"
-CLASS_SOHEI      = "Sohei"
-CLASS_KUNOICHI   = "Kunoichi"
+# ─── Unit classes ─────────────────────────────────────────────────────────────
+# Original
+CLASS_SAMURAI        = "Samurai"
+CLASS_ASHIGARU       = "Ashigaru"
+CLASS_CAVALRY        = "Cavalry"
+CLASS_ARCHER         = "Archer"
+CLASS_NINJA          = "Ninja"
+CLASS_MONK           = "Monk"
+CLASS_DAIMYO         = "Daimyo"
+CLASS_RONIN          = "Ronin"
+CLASS_ONMYOJI        = "Onmyoji"
+CLASS_BERSERKER      = "Berserker"
+CLASS_SPEARMAN       = "Spearman"
+CLASS_SOHEI          = "Sohei"
+CLASS_KUNOICHI       = "Kunoichi"
+# New
+CLASS_PEGASUS_KNIGHT = "Pegasus Knight"   # Flying
+CLASS_WYVERN_KNIGHT  = "Wyvern Knight"    # Flying (heavy)
+CLASS_GENERAL        = "General"           # Heavy armored foot
+CLASS_HATAMOTO       = "Hatamoto"          # Elite mounted samurai
+CLASS_MOUNTED_ARCHER = "Mounted Archer"    # Cavalry + bow
+CLASS_GUNNER         = "Gunner"            # Firearms
+CLASS_PIRATE         = "Pirate"            # Can cross water
+CLASS_TACTICIAN      = "Tactician"         # Magic support
+CLASS_NOBLE_LADY     = "Noble Lady"        # Unique support class
+CLASS_KUSARIGAMA     = "Kusarigama"        # Chain-sickle fighter
 
-# Class base stats: hp, str, mag, skl, spd, lck, def, res, move, weapons_allowed
+# Flying & mounted sets (for movement rules)
+FLYING_CLASSES  = {CLASS_PEGASUS_KNIGHT, CLASS_WYVERN_KNIGHT}
+MOUNTED_CLASSES = {CLASS_CAVALRY, CLASS_HATAMOTO, CLASS_MOUNTED_ARCHER}
+WATER_CLASSES   = {CLASS_PIRATE}   # Can traverse rivers/sea at normal cost
+
+# Class base stats: hp, str, mag, skl, spd, lck, def, res, move, weapons_allowed, color, symbol
 CLASS_DATA = {
     CLASS_SAMURAI: {
         "hp": 32, "str": 11, "mag": 2,  "skl": 10, "spd": 9,  "lck": 5, "def": 8,  "res": 3,
@@ -123,12 +163,12 @@ CLASS_DATA = {
     CLASS_CAVALRY: {
         "hp": 30, "str": 12, "mag": 0,  "skl": 8,  "spd": 10, "lck": 5, "def": 9,  "res": 2,
         "move": 8, "weapons": [WEAPON_KATANA, WEAPON_YARI],
-        "color": ORANGE, "symbol": "C"
+        "color": ORANGE, "symbol": "Cv"
     },
     CLASS_ARCHER: {
         "hp": 25, "str": 9,  "mag": 0,  "skl": 12, "spd": 8,  "lck": 6, "def": 5,  "res": 2,
         "move": 5, "weapons": [WEAPON_BOW],
-        "color": GREEN, "symbol": "R"
+        "color": GREEN, "symbol": "Ar"
     },
     CLASS_NINJA: {
         "hp": 22, "str": 10, "mag": 3,  "skl": 14, "spd": 14, "lck": 8, "def": 4,  "res": 5,
@@ -138,12 +178,12 @@ CLASS_DATA = {
     CLASS_MONK: {
         "hp": 24, "str": 5,  "mag": 12, "skl": 8,  "spd": 7,  "lck": 9, "def": 4,  "res": 10,
         "move": 5, "weapons": [WEAPON_STAFF],
-        "color": YELLOW, "symbol": "M"
+        "color": YELLOW, "symbol": "Mo"
     },
     CLASS_DAIMYO: {
         "hp": 40, "str": 14, "mag": 4,  "skl": 12, "spd": 10, "lck": 8, "def": 12, "res": 6,
         "move": 6, "weapons": [WEAPON_KATANA, WEAPON_NODACHI, WEAPON_YARI],
-        "color": GOLD, "symbol": "D"
+        "color": GOLD, "symbol": "Da"
     },
     CLASS_RONIN: {
         "hp": 28, "str": 13, "mag": 0,  "skl": 15, "spd": 12, "lck": 3, "def": 6,  "res": 2,
@@ -153,12 +193,12 @@ CLASS_DATA = {
     CLASS_ONMYOJI: {
         "hp": 20, "str": 3,  "mag": 15, "skl": 10, "spd": 8,  "lck": 10,"def": 3,  "res": 14,
         "move": 5, "weapons": [WEAPON_STAFF],
-        "color": PURPLE, "symbol": "O"
+        "color": PURPLE, "symbol": "On"
     },
     CLASS_BERSERKER: {
         "hp": 38, "str": 16, "mag": 0,  "skl": 7,  "spd": 7,  "lck": 3, "def": 10, "res": 1,
         "move": 5, "weapons": [WEAPON_TETSUBO, WEAPON_NODACHI],
-        "color": RED, "symbol": "B"
+        "color": RED, "symbol": "Be"
     },
     CLASS_SPEARMAN: {
         "hp": 30, "str": 10, "mag": 0,  "skl": 8,  "spd": 7,  "lck": 4, "def": 8,  "res": 2,
@@ -173,26 +213,86 @@ CLASS_DATA = {
     CLASS_KUNOICHI: {
         "hp": 20, "str": 8,  "mag": 5,  "skl": 14, "spd": 15, "lck": 10,"def": 3,  "res": 7,
         "move": 6, "weapons": [WEAPON_TANTO, WEAPON_BOW],
-        "color": PINK, "symbol": "K"
+        "color": PINK, "symbol": "Ku"
+    },
+    # ── New classes ────────────────────────────────────────────────────────────
+    CLASS_PEGASUS_KNIGHT: {
+        "hp": 24, "str": 10, "mag": 6,  "skl": 13, "spd": 14, "lck": 9, "def": 5,  "res": 10,
+        "move": 7, "weapons": [WEAPON_NAGINATA, WEAPON_STAFF],
+        "color": (200, 180, 255), "symbol": "Pg",
+        "flying": True
+    },
+    CLASS_WYVERN_KNIGHT: {
+        "hp": 34, "str": 15, "mag": 0,  "skl": 10, "spd": 9,  "lck": 4, "def": 13, "res": 4,
+        "move": 7, "weapons": [WEAPON_YARI, WEAPON_KATANA],
+        "color": (160, 80, 40), "symbol": "Wy",
+        "flying": True
+    },
+    CLASS_GENERAL: {
+        "hp": 46, "str": 13, "mag": 0,  "skl": 8,  "spd": 5,  "lck": 4, "def": 18, "res": 6,
+        "move": 4, "weapons": [WEAPON_YARI, WEAPON_TETSUBO, WEAPON_NAGINATA],
+        "color": SILVER, "symbol": "Gn"
+    },
+    CLASS_HATAMOTO: {
+        "hp": 34, "str": 14, "mag": 0,  "skl": 12, "spd": 11, "lck": 6, "def": 11, "res": 4,
+        "move": 8, "weapons": [WEAPON_KATANA, WEAPON_NODACHI, WEAPON_YARI],
+        "color": COPPER, "symbol": "Ha",
+        "mounted": True
+    },
+    CLASS_MOUNTED_ARCHER: {
+        "hp": 26, "str": 10, "mag": 0,  "skl": 13, "spd": 12, "lck": 6, "def": 7,  "res": 3,
+        "move": 7, "weapons": [WEAPON_BOW, WEAPON_KATANA],
+        "color": SAGE, "symbol": "MA",
+        "mounted": True
+    },
+    CLASS_GUNNER: {
+        "hp": 26, "str": 11, "mag": 2,  "skl": 10, "spd": 6,  "lck": 5, "def": 6,  "res": 3,
+        "move": 4, "weapons": [WEAPON_GUN, WEAPON_TANTO],
+        "color": SLATE, "symbol": "Gu"
+    },
+    CLASS_PIRATE: {
+        "hp": 30, "str": 12, "mag": 0,  "skl": 8,  "spd": 10, "lck": 6, "def": 7,  "res": 4,
+        "move": 5, "weapons": [WEAPON_KATANA, WEAPON_NODACHI],
+        "color": INDIGO, "symbol": "Pi",
+        "water_walk": True
+    },
+    CLASS_TACTICIAN: {
+        "hp": 22, "str": 4,  "mag": 14, "skl": 12, "spd": 9,  "lck": 8, "def": 4,  "res": 12,
+        "move": 5, "weapons": [WEAPON_STAFF, WEAPON_TANTO],
+        "color": VIOLET, "symbol": "Ta"
+    },
+    CLASS_NOBLE_LADY: {
+        "hp": 20, "str": 5,  "mag": 10, "skl": 10, "spd": 11, "lck": 14,"def": 3,  "res": 12,
+        "move": 5, "weapons": [WEAPON_STAFF, WEAPON_BOW],
+        "color": (240, 160, 200), "symbol": "NL"
+    },
+    CLASS_KUSARIGAMA: {
+        "hp": 24, "str": 11, "mag": 4,  "skl": 15, "spd": 13, "lck": 7, "def": 5,  "res": 6,
+        "move": 5, "weapons": [WEAPON_CHAIN, WEAPON_TANTO],
+        "color": (80, 60, 100), "symbol": "Ks"
     },
 }
 
-# Game states
-STATE_TITLE        = "title"
-STATE_CHAPTER_INTRO= "chapter_intro"
-STATE_PLAYER_TURN  = "player_turn"
-STATE_ENEMY_TURN   = "enemy_turn"
-STATE_ALLY_TURN    = "ally_turn"
-STATE_COMBAT       = "combat"
-STATE_GAME_OVER    = "game_over"
-STATE_VICTORY      = "victory"
-STATE_MENU         = "menu"
+# ─── Game states ──────────────────────────────────────────────────────────────
+STATE_TITLE         = "title"
+STATE_CHAPTER_INTRO = "chapter_intro"
+STATE_PLAYER_TURN   = "player_turn"
+STATE_ENEMY_TURN    = "enemy_turn"
+STATE_ALLY_TURN     = "ally_turn"
+STATE_COMBAT        = "combat"
+STATE_GAME_OVER     = "game_over"
+STATE_VICTORY       = "victory"
+STATE_MENU          = "menu"
+STATE_STAT_SHEET    = "stat_sheet"
+STATE_RECRUIT       = "recruit"
+STATE_REINFORCE     = "reinforce"
 
 # Cursor / selection modes
 CURSOR_FREE     = "free"
 CURSOR_UNIT_SEL = "unit_selected"
 CURSOR_ATTACK   = "attack"
 CURSOR_MOVE     = "move"
+CURSOR_TALK     = "talk"
 
 # Chapter objectives
 OBJ_ROUT_ENEMY  = "rout_enemy"
@@ -200,3 +300,15 @@ OBJ_SEIZE       = "seize"
 OBJ_SURVIVE     = "survive"
 OBJ_DEFEAT_BOSS = "defeat_boss"
 OBJ_ESCORT      = "escort"
+OBJ_DEFEND      = "defend"     # survive X turns
+
+# Samurai Warriors-style character archetypes (affects bio flavor)
+ARCHETYPE_HERO       = "hero"
+ARCHETYPE_RIVAL      = "rival"
+ARCHETYPE_STRATEGIST = "strategist"
+ARCHETYPE_HOTHEAD    = "hothead"
+ARCHETYPE_MYSTIC     = "mystic"
+ARCHETYPE_LOYAL      = "loyal"
+ARCHETYPE_AMBITIOUS  = "ambitious"
+ARCHETYPE_FREE       = "free spirit"
+ARCHETYPE_NOBLE      = "noble"

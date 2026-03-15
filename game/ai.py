@@ -1,159 +1,155 @@
 """
-Enemy AI for Sengoku Tactics
-Simple aggressive/defensive AI similar to Fire Emblem GBA.
+Enemy AI for Sengoku Tactics — aggressive, with flying/mounted awareness.
 """
-import random
 from game.constants import *
-from game.combat import resolve_combat
+from game.combat import resolve_combat, resolve_heal
+from game.weapon import WEAPON_STAFF
 
 
 class EnemyAI:
     def __init__(self, game_state):
-        self.gs = game_state  # reference to GameState
+        self.gs = game_state
 
     def run_enemy_turn(self):
-        """Process all enemy unit actions."""
         enemies = [u for u in self.gs.enemy_units if u.alive and not u.has_acted]
         for enemy in enemies:
             self._process_unit(enemy)
             enemy.done()
 
     def run_ally_turn(self):
-        """Process all ally unit actions (heal/attack as appropriate)."""
         allies = [u for u in self.gs.ally_units if u.alive and not u.has_acted]
         for ally in allies:
             self._process_ally(ally)
             ally.done()
 
     def _process_unit(self, unit):
-        """Determine best action for one enemy unit."""
-        gs = self.gs
+        gs   = self.gs
         gmap = gs.game_map
 
-        occupied = {(u.x, u.y) for u in gs.all_units() if u.alive and u != unit}
-
-        # Compute reachable tiles
-        reachable = gmap.get_movement_range(unit.x, unit.y, unit.move, unit.unit_class)
-        reachable -= {(u.x, u.y) for u in gs.all_units() if u.alive and u.faction == unit.faction and u != unit}
-
-        # Find best attack target
-        best_move  = None
-        best_target = None
-        best_score = -999
+        # Get reachable tiles (respects flying/mounted)
+        reachable = gmap.get_movement_range(
+            unit.x, unit.y, unit.move, unit.unit_class,
+            is_flying=unit.is_flying, is_mounted=unit.is_mounted,
+            water_walk=unit.water_walk,
+        )
+        # Remove tiles occupied by allied faction
+        friendly_tiles = {(u.x, u.y) for u in gs.enemy_units
+                          if u.alive and u != unit}
+        reachable -= friendly_tiles
 
         w = unit.equipped
         if w is None:
-            # Can't attack; just move toward nearest player
-            self._move_toward_nearest(unit, gs.player_units, reachable, gmap)
+            self._move_toward_nearest(unit, gs.player_units + gs.ally_units, reachable)
             return
 
         min_r, max_r = unit.attack_range()
 
+        # Check if weapon is a pure healing staff — don't attack with it
+        is_heal_only = (w.weapon_type == WEAPON_STAFF and
+                        ("heal" in w.weapon_id or "mend" in w.weapon_id))
+        if is_heal_only:
+            self._move_toward_nearest(unit, gs.player_units + gs.ally_units, reachable)
+            return
+
+        best_move   = None
+        best_target = None
+        best_score  = -9999
+
+        targets = [t for t in gs.player_units + gs.ally_units if t.alive]
+
         for (mx, my) in reachable:
-            for target in gs.player_units + gs.ally_units:
-                if not target.alive:
-                    continue
+            for target in targets:
                 dist = abs(mx - target.x) + abs(my - target.y)
                 if min_r <= dist <= max_r:
-                    score = self._score_attack(unit, target, mx, my, gmap)
+                    score = self._score_attack(unit, target, mx, my)
                     if score > best_score:
-                        best_score = score
-                        best_move  = (mx, my)
+                        best_score  = score
+                        best_move   = (mx, my)
                         best_target = target
 
         if best_move and best_target:
-            # Move to best_move
             if best_move != (unit.x, unit.y):
                 unit.x, unit.y = best_move
-            # Attack
             terrain_att = gmap.get_terrain(unit.x, unit.y)
             terrain_def = gmap.get_terrain(best_target.x, best_target.y)
             result = resolve_combat(unit, best_target, terrain_att, terrain_def)
             gs.combat_log.append(result)
-            if best_target.hp <= 0:
+            if not best_target.alive:
                 best_target.alive = False
         else:
-            # No attack possible; move toward nearest enemy
-            targets = gs.player_units + gs.ally_units
-            self._move_toward_nearest(unit, targets, reachable, gmap)
+            self._move_toward_nearest(unit, targets, reachable)
 
-    def _score_attack(self, attacker, defender, ax, ay, gmap):
-        """Score how good an attack would be (higher = better)."""
-        terrain_att = gmap.get_terrain(ax, ay)
+    def _score_attack(self, attacker, defender, ax, ay):
+        gs   = self.gs
+        gmap = gs.game_map
         terrain_def = gmap.get_terrain(defender.x, defender.y)
+        td  = TERRAIN_DATA[terrain_def]
 
-        # Estimate damage
-        atk = attacker.attack_power(defender.equipped)
-        def_ = defender.def_ + TERRAIN_DATA[terrain_def]["def"]
-        dmg = max(0, atk - def_)
+        atk  = attacker.attack_power(defender.equipped, target=defender)
+        def_ = defender.def_ + td["def"]
+        dmg  = max(0, atk - def_)
 
-        # Bonus for killing blow
         if dmg >= defender.hp:
             score = 200 + defender.level * 5
         else:
-            hp_pct_dmg = (dmg / max(1, defender.hp)) * 100
-            score = hp_pct_dmg + defender.level * 2
+            score = (dmg / max(1, defender.hp)) * 100 + defender.level * 2
 
-        # Penalty for attacking high-def targets
         score -= max(0, def_ - attacker.str_) * 2
 
-        # Bonus for targeting lords (player win condition)
         if defender.is_lord:
             score += 50
+        if attacker.is_flying and defender.equipped:
+            # Flyers slightly avoid well-armed defenders
+            from game.weapon import WEAPON_BOW
+            if defender.equipped.weapon_type == WEAPON_BOW:
+                score -= 30
 
         return score
 
-    def _move_toward_nearest(self, unit, targets, reachable, gmap):
-        """Move toward the nearest target."""
+    def _move_toward_nearest(self, unit, targets, reachable):
         alive_targets = [t for t in targets if t.alive]
         if not alive_targets:
             return
-
-        # Pick closest
-        def dist_to(t):
-            return abs(unit.x - t.x) + abs(unit.y - t.y)
-        nearest = min(alive_targets, key=dist_to)
-
-        # Move to reachable tile closest to target
-        best = None
-        best_d = 9999
+        nearest = min(alive_targets, key=lambda t: abs(unit.x-t.x)+abs(unit.y-t.y))
+        best, best_d = None, 9999
         for (mx, my) in reachable:
             d = abs(mx - nearest.x) + abs(my - nearest.y)
             if d < best_d:
                 best_d = d
-                best = (mx, my)
-
+                best   = (mx, my)
         if best and best != (unit.x, unit.y):
             unit.x, unit.y = best
 
     def _process_ally(self, unit):
-        """Allies prefer to heal low-HP friends, otherwise attack."""
-        gs = self.gs
+        gs   = self.gs
         gmap = gs.game_map
-        reachable = gmap.get_movement_range(unit.x, unit.y, unit.move, unit.unit_class)
-        reachable -= {(u.x, u.y) for u in gs.all_units() if u.alive and u.faction == unit.faction and u != unit}
+        reachable = gmap.get_movement_range(
+            unit.x, unit.y, unit.move, unit.unit_class,
+            is_flying=unit.is_flying, is_mounted=unit.is_mounted,
+            water_walk=unit.water_walk,
+        )
+        friendly_tiles = {(u.x, u.y) for u in gs.ally_units
+                          if u.alive and u != unit}
+        reachable -= friendly_tiles
 
         w = unit.equipped
         if w and w.weapon_type == WEAPON_STAFF:
-            # Healer: find most injured ally
-            from game.combat import resolve_heal
-            best_target = None
-            worst_hp_pct = 1.0
+            best_target, best_move, worst_hp_pct = None, None, 1.0
             for (mx, my) in reachable:
                 for friend in gs.player_units + gs.ally_units:
                     if not friend.alive or friend == unit:
                         continue
                     dist = abs(mx - friend.x) + abs(my - friend.y)
-                    if dist == 1:
+                    if dist <= w.max_range:
                         pct = friend.hp / friend.max_hp
                         if pct < worst_hp_pct:
                             worst_hp_pct = pct
-                            best_target = friend
-                            best_move = (mx, my)
+                            best_target  = friend
+                            best_move    = (mx, my)
             if best_target and worst_hp_pct < 0.85:
-                unit.x, unit.y = best_move
+                if best_move and best_move != (unit.x, unit.y):
+                    unit.x, unit.y = best_move
                 resolve_heal(unit, best_target)
                 return
 
-        # Otherwise attack
         self._process_unit(unit)
