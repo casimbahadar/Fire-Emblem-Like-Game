@@ -57,6 +57,12 @@ class GameState:
         # Persistent roster across chapters (survivors carry forward)
         self._chapter_survivors = {}
 
+        # Game mode: True = Classic (permadeath), False = Casual (revive next chapter)
+        self.classic_mode = True
+
+        # Casual mode: units killed this chapter are tracked for revival next chapter
+        self._casual_dead = []
+
         # Tutorial
         self.tutorial = TutorialManager()
 
@@ -72,6 +78,19 @@ class GameState:
         self.chapter_index   = index
         self.current_chapter = CHAPTERS[index]
         gmap, players, enemies, allies, waves = self.current_chapter.build(self.roster)
+
+        # Casual mode: revive player units that died last chapter at full HP
+        if not self.classic_mode and self._casual_dead:
+            alive_ids = {u.unit_id for u in players}
+            for dead_u in self._casual_dead:
+                if dead_u.unit_id not in alive_ids:
+                    dead_u.hp = dead_u.max_hp
+                    dead_u.alive = True
+                    dead_u.faction = FACTION_PLAYER
+                    # Place off-map initially; chapter placement can override
+                    dead_u.x, dead_u.y = 0, 0
+                    players.append(dead_u)
+            self._casual_dead = []
 
         self.game_map       = gmap
         self.player_units   = players
@@ -332,8 +351,12 @@ class GameState:
 
         if not defender.alive:
             self.push_message(f"{defender.name} was defeated!")
+            if not self.classic_mode and defender.faction == FACTION_PLAYER:
+                self._casual_dead.append(defender)
         if not attacker.alive:
             self.push_message(f"{attacker.name} was defeated!")
+            if not self.classic_mode and attacker.faction == FACTION_PLAYER:
+                self._casual_dead.append(attacker)
 
         if result.level_up_att and not attacker.alive is False:
             gains = getattr(attacker, '_last_level_gains', {})
