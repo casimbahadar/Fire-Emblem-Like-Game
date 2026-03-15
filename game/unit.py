@@ -1010,4 +1010,93 @@ def create_unit_roster():
     _generic("e_ron3",   "Rival Ronin",    CLASS_RONIN,       FACTION_ENEMY, 6,  ["steel_katana"],   (100,30,30))
     _generic("e_hata2",  "Elite Hatamoto", CLASS_HATAMOTO,    FACTION_ENEMY, 8,  ["silver_katana","jumonji_yari"],(150,90,50))
 
+    # ── New flying generics ────────────────────────────────────────────────────
+    _generic("e_fk1",  "Falcon Knight",  CLASS_FALCON_KNIGHT, FACTION_ENEMY, 5,  ["iron_naginata","heal_staff"],  (210,190,255))
+    _generic("e_fk2",  "Falcon Knight",  CLASS_FALCON_KNIGHT, FACTION_ENEMY, 7,  ["steel_naginata","mend_staff"], (200,180,255))
+    _generic("e_ea1",  "Eagle Archer",   CLASS_EAGLE_ARCHER,  FACTION_ENEMY, 5,  ["steel_bow"],                   (170,220,150))
+    _generic("e_ea2",  "Eagle Archer",   CLASS_EAGLE_ARCHER,  FACTION_ENEMY, 7,  ["silver_bow","yumi_anti_air"],  (160,210,140))
+    _generic("e_sr1",  "Storm Rider",    CLASS_STORM_RIDER,   FACTION_ENEMY, 5,  ["iron_tanto","iron_katana"],    (150,200,255))
+    _generic("e_sr2",  "Storm Rider",    CLASS_STORM_RIDER,   FACTION_ENEMY, 8,  ["steel_tanto","steel_katana"],  (140,190,255))
+    _generic("e_tm1",  "Tengu Master",   CLASS_TENGU_MASTER,  FACTION_ENEMY, 5,  ["iron_tanto","ofuda"],          (90,50,150))
+    _generic("e_sl1",  "Sky Lancer",     CLASS_SKY_LANCER,    FACTION_ENEMY, 6,  ["steel_yari"],                  (170,110,55))
+    _generic("e_sl2",  "Sky Lancer",     CLASS_SKY_LANCER,    FACTION_ENEMY, 8,  ["silver_yari","iron_naginata"], (160,100,45))
+    _generic("e_dk1",  "Dragon Knight",  CLASS_DRAGON_KNIGHT, FACTION_ENEMY, 8,  ["silver_yari","steel_katana"],  (190,70,25))
+    _generic("e_dk2",  "Dragon Knight",  CLASS_DRAGON_KNIGHT, FACTION_ENEMY,10,  ["dojikiri","nihongo"],          (180,60,20))
+
+    # ── New mounted generics ───────────────────────────────────────────────────
+    _generic("e_lc1",  "Lance Cavalry",  CLASS_LANCE_CAVALRY, FACTION_ENEMY, 4,  ["iron_yari"],                   (210,130,55))
+    _generic("e_lc2",  "Lance Cavalry",  CLASS_LANCE_CAVALRY, FACTION_ENEMY, 6,  ["steel_yari","iron_naginata"],  (200,120,45))
+    _generic("e_we1",  "War Elephant",   CLASS_WAR_ELEPHANT,  FACTION_ENEMY, 6,  ["iron_tetsubo","iron_yari"],    (90,70,55))
+    _generic("e_we2",  "War Elephant",   CLASS_WAR_ELEPHANT,  FACTION_ENEMY, 9,  ["steel_tetsubo","steel_yari"],  (80,60,45))
+    _generic("e_ltc1", "Light Cavalry",  CLASS_LIGHT_CAVALRY, FACTION_ENEMY, 3,  ["iron_tanto","iron_bow"],       (195,195,110))
+    _generic("e_ltc2", "Light Cavalry",  CLASS_LIGHT_CAVALRY, FACTION_ENEMY, 5,  ["steel_tanto","iron_bow"],      (185,185,100))
+    _generic("e_gk1",  "Great Knight",   CLASS_GREAT_KNIGHT,  FACTION_ENEMY, 5,  ["steel_katana","iron_yari"],    (130,130,170))
+    _generic("e_gk2",  "Great Knight",   CLASS_GREAT_KNIGHT,  FACTION_ENEMY, 8,  ["silver_katana","jumonji_yari"],(120,120,160))
+    _generic("e_nc1",  "Noble Cavalry",  CLASS_NOBLE_CAVALRY, FACTION_ENEMY, 6,  ["steel_katana","silver_yari"],  (210,190,75))
+
+    # ── Named units using new classes ──────────────────────────────────────────
+    units["kobayakawa"] = Unit(
+        "kobayakawa", "Kobayakawa Hideaki", CLASS_GREAT_KNIGHT, FACTION_ENEMY, level=8,
+        weapon_ids=["silver_katana","jumonji_yari"],
+        portrait_color=(100,110,170),
+        archetype=ARCHETYPE_AMBITIOUS,
+        bio=("The pivotal traitor of Sekigahara. Promised rewards by both sides,\n"
+             "he waited atop his hill — until Ieyasu fired a warning shot toward him.\n"
+             "He then charged Mitsunari's flank, deciding the battle."),
+        quote="The winning side... is the side that wins. Obviously.",
+        can_recruit=True, recruit_by=["ieyasu","any"],
+    )
+    units["matsunaga"] = Unit(
+        "matsunaga", "Matsunaga Hisahide", CLASS_STORM_RIDER, FACTION_ENEMY, level=9,
+        weapon_ids=["steel_tanto","steel_katana"],
+        portrait_color=(60,40,100),
+        archetype=ARCHETYPE_MYSTIC,
+        bio=("The 'Three Great Villainies' lord — burned Todaiji, killed the Shogun,\n"
+             "betrayed every alliance he made. When cornered by Nobunaga,\n"
+             "he blew himself up with his own precious tea kettle."),
+        quote="Burn everything, own nothing. That is true freedom.",
+    )
+    units["naotora"] = Unit(
+        "naotora", "Ii Naotora", CLASS_NOBLE_CAVALRY, FACTION_ALLY, level=7,
+        weapon_ids=["steel_yari","iron_naginata"],
+        portrait_color=(230,60,60),
+        archetype=ARCHETYPE_HERO,
+        bio=("The Lady Ii — she inherited her clan's famous red armor and held\n"
+             "their domain alone while the men were at war. She is Ii Naomasa's\n"
+             "adoptive mother and the true iron heart of the red devils."),
+        quote="Red is not the color of death. It is the color of life — and will!",
+    )
+    units["tsuruhime_upgraded"] = Unit(
+        "tsuruhime_upgraded", "Tsuruhime the Sea Falcon", CLASS_EAGLE_ARCHER, FACTION_ALLY, level=8,
+        weapon_ids=["tsuruhime_bow","yumi_anti_air"],
+        portrait_color=(180,210,255),
+        archetype=ARCHETYPE_HERO,
+        bio=("Promoted to Eagle Archer after mastering the gods' own wind currents.\n"
+             "Her shots from altitude have the force of a diving hawk.\n"
+             "She claims the sea eagles are her messengers from Oyamazumi Shrine."),
+        quote="The gods gave me arrows and wings. Let that be sufficient.",
+    )
+    units["yoshitsune"] = Unit(
+        "yoshitsune", "Minamoto no Yoshitsune", CLASS_FALCON_KNIGHT, FACTION_ALLY, level=9,
+        weapon_ids=["silver_naginata","physic_staff"],
+        portrait_color=(200,220,255),
+        archetype=ARCHETYPE_HERO,
+        bio=("The legendary hero-general — appearing as a vision to guide the army.\n"
+             "Swift as thought, agile as the wind, and blessed with divine grace.\n"
+             "He fights from the air, healing allies even as he strikes enemies."),
+        quote="I ride where the wind rides. And the wind goes everywhere.",
+    )
+
+    # ── Shimazu generic variants using new classes ─────────────────────────────
+    def _named(uid, name, cls, faction, lv, wids, col, bio=""):
+        units[uid] = Unit(uid, name, cls, faction, level=lv,
+                          weapon_ids=wids, portrait_color=col, bio=bio)
+
+    _named("shimazu_ash1", "Shimazu Soldier", CLASS_LANCE_CAVALRY, FACTION_ENEMY,
+           4, ["iron_yari"], (90,50,140))
+    _named("shimazu_ash2", "Shimazu Soldier", CLASS_LANCE_CAVALRY, FACTION_ENEMY,
+           4, ["iron_yari"], (90,50,140))
+    _named("shimazu_archer","Shimazu Archer", CLASS_EAGLE_ARCHER, FACTION_ENEMY,
+           5, ["steel_bow"], (100,60,150))
+
     return units

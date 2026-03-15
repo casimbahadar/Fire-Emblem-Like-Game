@@ -8,6 +8,8 @@ from game.chapter import CHAPTERS
 from game.unit import create_unit_roster
 from game.ai import EnemyAI
 from game.combat import resolve_combat, resolve_heal
+from game.dialogs import get_pre_combat_dialog, reset_dialog_flags
+from game.tutorial import TutorialManager
 
 
 class GameState:
@@ -49,8 +51,20 @@ class GameState:
         # Defend-mode turn tracker
         self._defend_turns_survived = 0
 
+        # Boss dialog reset
+        reset_dialog_flags()
+
         # Persistent roster across chapters (survivors carry forward)
         self._chapter_survivors = {}
+
+        # Tutorial
+        self.tutorial = TutorialManager()
+
+        # Boss dialog state
+        self.pending_dialog       = None   # list of (speaker, text) or None
+        self.pending_dialog_idx   = 0
+        self.pending_dialog_atk   = None   # attacker unit after dialog
+        self.pending_dialog_def   = None   # defender unit after dialog
 
     # ── Chapter Loading ───────────────────────────────────────────────────────
 
@@ -287,6 +301,27 @@ class GameState:
         return targets
 
     # ── Actions ───────────────────────────────────────────────────────────────
+
+    def check_and_trigger_dialog(self, attacker, defender):
+        """Check for pre-combat dialog. Returns True if dialog was triggered."""
+        lines = get_pre_combat_dialog(attacker, defender)
+        if lines:
+            self.pending_dialog     = lines
+            self.pending_dialog_idx = 0
+            self.pending_dialog_atk = attacker
+            self.pending_dialog_def = defender
+            return True
+        return False
+
+    def advance_dialog(self):
+        """Advance dialog by one line. Returns True if dialog is complete."""
+        if self.pending_dialog is None:
+            return True
+        self.pending_dialog_idx += 1
+        if self.pending_dialog_idx >= len(self.pending_dialog):
+            self.pending_dialog = None
+            return True
+        return False
 
     def attack(self, attacker, defender):
         terrain_att = self.game_map.get_terrain(attacker.x, attacker.y)

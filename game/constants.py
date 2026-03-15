@@ -142,10 +142,30 @@ CLASS_PIRATE         = "Pirate"            # Can cross water
 CLASS_TACTICIAN      = "Tactician"         # Magic support
 CLASS_NOBLE_LADY     = "Noble Lady"        # Unique support class
 CLASS_KUSARIGAMA     = "Kusarigama"        # Chain-sickle fighter
+# ── Additional Flying Classes ──────────────────────────────────────────────────
+CLASS_FALCON_KNIGHT  = "Falcon Knight"    # Promoted Pegasus — fastest healer/attacker
+CLASS_EAGLE_ARCHER   = "Eagle Archer"     # Flying bow unit — anti-flyer specialist
+CLASS_STORM_RIDER    = "Storm Rider"      # Ultra-fast dual-blade sky assassin
+CLASS_TENGU_MASTER   = "Tengu Master"     # Ninja-style magic flyer
+CLASS_SKY_LANCER     = "Sky Lancer"       # Heavy armored flying spearman
+CLASS_DRAGON_KNIGHT  = "Dragon Knight"    # Mounted on war-dragon — supreme flyer
+# ── Additional Mounted Classes ─────────────────────────────────────────────────
+CLASS_LANCE_CAVALRY  = "Lance Cavalry"    # Spear-specialist cavalry
+CLASS_WAR_ELEPHANT   = "War Elephant"     # Massive, slow, devastating (Korean/Ming)
+CLASS_LIGHT_CAVALRY  = "Light Cavalry"    # Scout — blazing speed, low attack
+CLASS_GREAT_KNIGHT   = "Great Knight"     # Heavy armored cavalry, powerful but slow
+CLASS_NOBLE_CAVALRY  = "Noble Cavalry"    # Lord cavalry — high all-around stats
+# ── Game States ────────────────────────────────────────────────────────────────
+STATE_BOSS_DIALOG    = "boss_dialog"
+STATE_TUTORIAL       = "tutorial"
 
 # Flying & mounted sets (for movement rules)
-FLYING_CLASSES  = {CLASS_PEGASUS_KNIGHT, CLASS_WYVERN_KNIGHT}
-MOUNTED_CLASSES = {CLASS_CAVALRY, CLASS_HATAMOTO, CLASS_MOUNTED_ARCHER}
+FLYING_CLASSES  = {CLASS_PEGASUS_KNIGHT, CLASS_WYVERN_KNIGHT, CLASS_FALCON_KNIGHT,
+                   CLASS_EAGLE_ARCHER, CLASS_STORM_RIDER, CLASS_TENGU_MASTER,
+                   CLASS_SKY_LANCER, CLASS_DRAGON_KNIGHT}
+MOUNTED_CLASSES = {CLASS_CAVALRY, CLASS_HATAMOTO, CLASS_MOUNTED_ARCHER,
+                   CLASS_LANCE_CAVALRY, CLASS_LIGHT_CAVALRY, CLASS_GREAT_KNIGHT,
+                   CLASS_NOBLE_CAVALRY}
 WATER_CLASSES   = {CLASS_PIRATE}   # Can traverse rivers/sea at normal cost
 
 # Class base stats: hp, str, mag, skl, spd, lck, def, res, move, weapons_allowed, color, symbol
@@ -270,6 +290,85 @@ CLASS_DATA = {
         "hp": 24, "str": 11, "mag": 4,  "skl": 15, "spd": 13, "lck": 7, "def": 5,  "res": 6,
         "move": 5, "weapons": [WEAPON_CHAIN, WEAPON_TANTO],
         "color": (80, 60, 100), "symbol": "Ks"
+    },
+    # ── Additional Flying Classes ─────────────────────────────────────────────
+    CLASS_FALCON_KNIGHT: {
+        "hp": 26, "str": 12, "mag": 8,  "skl": 15, "spd": 17, "lck": 11,"def": 7,  "res": 12,
+        "move": 8, "weapons": [WEAPON_NAGINATA, WEAPON_STAFF],
+        "color": (220, 200, 255), "symbol": "FK",
+        "flying": True,
+        "description": "Promoted Pegasus. Fastest flyer. Healer and attacker combined."
+    },
+    CLASS_EAGLE_ARCHER: {
+        "hp": 22, "str": 10, "mag": 2,  "skl": 16, "spd": 14, "lck": 9, "def": 6,  "res": 8,
+        "move": 7, "weapons": [WEAPON_BOW],
+        "color": (180, 220, 160), "symbol": "EA",
+        "flying": True,
+        "description": "Rides a giant war eagle. Bow specialist — deadly vs other flyers."
+    },
+    CLASS_STORM_RIDER: {
+        "hp": 20, "str": 14, "mag": 5,  "skl": 17, "spd": 19, "lck": 10,"def": 5,  "res": 7,
+        "move": 8, "weapons": [WEAPON_TANTO, WEAPON_KATANA],
+        "color": (160, 210, 255), "symbol": "SR",
+        "flying": True,
+        "description": "Lightning-fast aerial duelist. The fastest unit in the army."
+    },
+    CLASS_TENGU_MASTER: {
+        "hp": 22, "str": 8,  "mag": 14, "skl": 14, "spd": 14, "lck": 12,"def": 5,  "res": 14,
+        "move": 7, "weapons": [WEAPON_TANTO, WEAPON_STAFF],
+        "color": (100, 60, 160), "symbol": "TM",
+        "flying": True,
+        "description": "Supernatural ninja-monk of the mountain. Magic and blade in sky."
+    },
+    CLASS_SKY_LANCER: {
+        "hp": 32, "str": 16, "mag": 0,  "skl": 11, "spd": 10, "lck": 5, "def": 14, "res": 5,
+        "move": 6, "weapons": [WEAPON_YARI, WEAPON_NAGINATA],
+        "color": (180, 120, 60), "symbol": "SL",
+        "flying": True,
+        "description": "Heavily armored flying lancer. Slower but nearly unstoppable."
+    },
+    CLASS_DRAGON_KNIGHT: {
+        "hp": 40, "str": 18, "mag": 4,  "skl": 12, "spd": 8,  "lck": 4, "def": 16, "res": 6,
+        "move": 6, "weapons": [WEAPON_YARI, WEAPON_NODACHI, WEAPON_KATANA],
+        "color": (200, 80, 30), "symbol": "DK",
+        "flying": True,
+        "description": "Mounts a fearsome war-dragon. The pinnacle of flying power."
+    },
+    # ── Additional Mounted Classes ────────────────────────────────────────────
+    CLASS_LANCE_CAVALRY: {
+        "hp": 30, "str": 13, "mag": 0,  "skl": 9,  "spd": 11, "lck": 5, "def": 10, "res": 2,
+        "move": 8, "weapons": [WEAPON_YARI, WEAPON_NAGINATA],
+        "color": (220, 140, 60), "symbol": "LC",
+        "mounted": True,
+        "description": "Spear-mounted cavalry. Strong anti-infantry charge specialists."
+    },
+    CLASS_WAR_ELEPHANT: {
+        "hp": 56, "str": 20, "mag": 0,  "skl": 5,  "spd": 4,  "lck": 3, "def": 18, "res": 4,
+        "move": 4, "weapons": [WEAPON_TETSUBO, WEAPON_YARI],
+        "color": (100, 80, 60), "symbol": "WE",
+        "mounted": True,
+        "description": "Korean/Ming war elephant. Mountainous HP and DEF. Extremely slow."
+    },
+    CLASS_LIGHT_CAVALRY: {
+        "hp": 24, "str": 9,  "mag": 0,  "skl": 10, "spd": 15, "lck": 8, "def": 6,  "res": 3,
+        "move": 9, "weapons": [WEAPON_TANTO, WEAPON_BOW],
+        "color": (200, 200, 120), "symbol": "LtC",
+        "mounted": True,
+        "description": "Scout cavalry. Blinding speed but limited combat power."
+    },
+    CLASS_GREAT_KNIGHT: {
+        "hp": 38, "str": 15, "mag": 0,  "skl": 9,  "spd": 7,  "lck": 4, "def": 17, "res": 6,
+        "move": 6, "weapons": [WEAPON_KATANA, WEAPON_YARI, WEAPON_TETSUBO],
+        "color": (140, 140, 180), "symbol": "GK",
+        "mounted": True,
+        "description": "Full-plate armored cavalry. Immense defense. Can't enter forests."
+    },
+    CLASS_NOBLE_CAVALRY: {
+        "hp": 36, "str": 14, "mag": 5,  "skl": 12, "spd": 12, "lck": 10,"def": 12, "res": 8,
+        "move": 8, "weapons": [WEAPON_KATANA, WEAPON_NODACHI, WEAPON_YARI],
+        "color": (220, 200, 80), "symbol": "NC",
+        "mounted": True,
+        "description": "Lord-class cavalry. Balanced, fast, and commanding on horseback."
     },
 }
 
