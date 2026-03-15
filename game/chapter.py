@@ -26,7 +26,8 @@ class Chapter:
                  objective, objective_detail,
                  player_units, enemy_units, ally_units,
                  map_builder, turn_limit=None,
-                 reinforcements=None, seize_unit="nobunaga"):
+                 reinforcements=None, seize_unit="nobunaga",
+                 deploy_limit=8):
         self.number   = number
         self.title    = title
         self.subtitle = subtitle
@@ -42,6 +43,7 @@ class Chapter:
         self.turn_limit        = turn_limit
         self.reinforcements    = reinforcements or []
         self.seize_unit        = seize_unit   # which lord seizes
+        self.deploy_limit      = deploy_limit  # max deployable player units
         # Pre-battle scene dialog: list of (speaker_key, display_name, line)
         idx = number - 1   # chapters numbered 1–20
         self.scene_dialog = CHAPTER_SCENES[idx] if 0 <= idx < len(CHAPTER_SCENES) else []
@@ -108,13 +110,13 @@ CHAPTERS = [
         objective=OBJ_SEIZE, objective_detail="Seize the castle (14,7) with Nobunaga.",
         player_units=[
             ("nobunaga", 1,8), ("hideyoshi",1,7), ("ranmaru",0,6),
-            ("oda_ash1", 2,9), ("oda_ash2", 0,9), ("oda_arch1",1,9),
         ],
         enemy_units=[
             ("e_ash1",12,2), ("e_ash2",13,4), ("e_ash3",12,5),
             ("e_cav1",11,3), ("e_arch1",14,5), ("kansuke",13,6),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[1],
+        deploy_limit=5,
         reinforcements=[
             ReinforcementWave(4, FACTION_ENEMY,
                 [("e_ash4",14,9),("e_sam1",13,9)],
@@ -146,7 +148,7 @@ CHAPTERS = [
         objective_detail="Defeat Imagawa Yoshimoto in the forest.",
         player_units=[
             ("nobunaga",1,10), ("mitsuhide",2,10), ("hideyoshi",1,9),
-            ("ranmaru",0,9),   ("nene",3,10),      ("oda_arch1",2,9),
+            ("ranmaru",0,9),   ("nene",3,10),
         ],
         enemy_units=[
             ("e_ash1",5,6), ("e_ash2",7,5), ("e_ash3",3,5),
@@ -154,6 +156,7 @@ CHAPTERS = [
             ("e_monk1",10,4), ("yoshimoto",6,4),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[2],
+        deploy_limit=6,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_sam1",12,5),("e_cav1",11,4)],
@@ -184,8 +187,7 @@ CHAPTERS = [
         objective=OBJ_ROUT_ENEMY, objective_detail="Defeat all enemy units.",
         player_units=[
             ("nobunaga",1,5), ("hideyoshi",0,5), ("katsuie",1,6),
-            ("nagahide",0,6), ("mitsuhide",2,5), ("oda_monk1",1,7),
-            ("oda_arch1",2,6), ("oda_ash1",0,7),
+            ("nagahide",0,6), ("mitsuhide",2,5),
         ],
         enemy_units=[
             ("kenshin",2,0), ("kanetsugu",3,1), ("kagetsora",4,1),
@@ -193,8 +195,10 @@ CHAPTERS = [
             ("shingen",13,11), ("kansuke",12,10), ("masakage",14,10),
             ("e_cav1",13,10), ("e_ash1",12,11), ("e_ash2",14,11),
         ],
-        ally_units=[("ieyasu",2,7)],
+        # Tokugawa Ieyasu allied with Oda at Kawanakajima
+        ally_units=[("ieyasu",2,7), ("tadakatsu",3,7)],
         map_builder=MAP_BUILDERS[3],
+        deploy_limit=8,
         reinforcements=[
             ReinforcementWave(4, FACTION_ENEMY,
                 [("nobushige",0,1),("masanobu",15,10)],
@@ -232,7 +236,6 @@ CHAPTERS = [
         objective_detail="Reach the inner sanctum (7,6) with Nobunaga. Mitsuhide, Hidemitsu, and Miyabe command the encirclement.",
         player_units=[
             ("nobunaga",7,11), ("ranmaru",6,11), ("nagahide",8,11),
-            ("oda_ash1",6,10), ("oda_ash2",8,10), ("oda_monk1",7,10),
         ],
         enemy_units=[
             # Three Akechi commanders: Mitsuhide + his nephew Hidemitsu + strategist Miyabe
@@ -243,6 +246,7 @@ CHAPTERS = [
             ("e_cav1",9,8), ("e_ash3",4,9), ("e_hat1",10,9),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[4],
+        deploy_limit=5,
         reinforcements=[
             ReinforcementWave(2, FACTION_ENEMY,
                 [("e_ron1",2,4),("e_ron2",12,4)],
@@ -278,8 +282,7 @@ CHAPTERS = [
         objective_detail="Seize the center of Sekigahara (9,6) with any lord unit.",
         player_units=[
             ("hideyoshi",1,13), ("katsuie",0,12), ("nagahide",2,12),
-            ("nene",1,12), ("oda_arch1",3,13), ("oda_ash1",0,13),
-            ("oda_ash2",2,13), ("oda_monk1",1,11), ("ieyasu",3,12),
+            ("nene",1,12), ("ieyasu",3,12),
         ],
         enemy_units=[
             ("yoshihisa",9,1), ("yoshihiro",8,2),
@@ -291,6 +294,7 @@ CHAPTERS = [
             ("e_arch1",7,3),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[5],
+        deploy_limit=8,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("otani",5,2),("mitsunari",4,1)],
@@ -328,8 +332,7 @@ CHAPTERS = [
         objective_detail="Seize Inabayama Castle at the mountain peak (6-7, 0).",
         player_units=[
             ("nobunaga",6,12), ("hideyoshi",7,12), ("katsuie",5,12),
-            ("mitsuhide",8,12), ("oda_ash1",6,11), ("oda_ash2",7,11),
-            ("oda_spear1",5,11), ("oda_arch1",8,11),
+            ("mitsuhide",8,12),
         ],
         enemy_units=[
             ("tatsuoki",6,0), ("e_sam1",5,2), ("e_sam2",8,2),
@@ -337,6 +340,7 @@ CHAPTERS = [
             ("e_arch2",9,5), ("e_spear1",6,6), ("e_gen1",7,6),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[6],
+        deploy_limit=7,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_sam2",4,2),("e_ash3",9,3)],
@@ -372,17 +376,19 @@ CHAPTERS = [
         objective_detail="Defeat all enemy forces. Recruit Azai Nagamasa with Oichi.",
         player_units=[
             ("nobunaga",2,5), ("hideyoshi",1,5), ("katsuie",3,5),
-            ("oichi",2,6), ("toshiie",1,6), ("oda_cav1",0,5),
-            ("oda_arch1",3,6), ("oda_ash1",0,6), ("ieyasu",1,7),
+            ("oichi",2,6), ("toshiie",1,6), ("ieyasu",1,7),
         ],
         enemy_units=[
+            # Nagamasa recruitable with Oichi (his wife)
             ("nagamasa",4,2), ("e_sam1",3,1), ("e_sam2",5,1),
             ("e_ash1",2,2), ("e_cav1",6,2),
             ("yoshikage",13,9), ("e_sam3",12,10), ("e_ash2",14,9),
             ("e_ash3",13,10), ("e_spear1",12,9), ("e_arch1",14,10),
         ],
+        # Tokugawa Ieyasu was Nobunaga's ally at Anegawa — historically accurate
         ally_units=[("tadakatsu",2,7),("naomasa",3,7)],
         map_builder=MAP_BUILDERS[7],
+        deploy_limit=9,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_cav2",2,0),("e_spear2",15,11)],
@@ -421,8 +427,7 @@ CHAPTERS = [
         objective_detail="Clear the island fortress. Recruit Kanbei by reaching him.",
         player_units=[
             ("nobunaga",7,12), ("hideyoshi",6,12), ("katsuie",8,12),
-            ("nagahide",5,12), ("nene",9,12), ("oda_ash1",6,11),
-            ("oda_ash2",8,11), ("oda_arch1",7,11), ("oda_gun1",5,11),
+            ("nagahide",5,12), ("nene",9,12),
         ],
         enemy_units=[
             ("e_ikko1",6,6), ("e_ikko2",7,5), ("e_ikko1",8,6),
@@ -433,6 +438,7 @@ CHAPTERS = [
             ("kanbei",12,6),    # appears as neutral-enemy, recruitable
         ],
         ally_units=[], map_builder=MAP_BUILDERS[8],
+        deploy_limit=9,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_ikko1",4,7),("e_ikko2",10,7),("e_monk1",7,9)],
@@ -465,15 +471,17 @@ CHAPTERS = [
         objective_detail="Hold Nagashino Castle for 8 turns.",
         player_units=[
             ("nobunaga",6,8), ("hideyoshi",7,8), ("kanbei",5,8),
-            ("katsuie",8,8), ("oda_gun1",6,7), ("oda_gun2",8,7),
-            ("oda_arch1",5,7), ("oda_arch2",9,7), ("oda_ash1",6,9),
+            ("katsuie",8,8),
         ],
         enemy_units=[
             ("shingen",9,1), ("masakage",8,1), ("masanobu",10,1),
             ("e_cav1",7,2), ("e_cav2",11,2), ("e_ash1",6,2),
             ("e_ash2",12,2), ("e_arch1",7,3), ("e_arch2",11,3),
         ],
-        ally_units=[], map_builder=MAP_BUILDERS[9],
+        # Tokugawa garrison also defended at Nagashino
+        ally_units=[("ieyasu",7,8), ("tadakatsu",6,8)],
+        map_builder=MAP_BUILDERS[9],
+        deploy_limit=8,
         turn_limit=None,  # Players must survive 8 turns (checked in state)
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
@@ -513,9 +521,7 @@ CHAPTERS = [
         objective_detail="Defeat Takeda Katsuyori (new lord after Shingen) commanding the charge. His four generals — Shingen, Kansuke, Masakage, Masanobu — lead the cavalry wings.",
         player_units=[
             ("nobunaga",10,5), ("kanbei",9,5), ("katsuie",11,5),
-            ("toshiie",12,5), ("oda_gun1",8,5), ("oda_gun2",12,5),
-            ("oda_gun1",10,5), ("oda_arch1",9,6), ("oda_arch2",11,6),
-            ("oda_ash1",8,6),  ("oda_ash2",12,6),
+            ("toshiie",12,5),
         ],
         enemy_units=[
             # Four Takeda commanders + Katsuyori as overall boss = 5 named bosses
@@ -525,8 +531,10 @@ CHAPTERS = [
             ("e_cav1",6,10), ("e_cav2",13,10), ("e_ash1",9,10),
             ("e_ash2",11,10), ("magoichi",3,10),  # recruitable!
         ],
+        # Tokugawa Ieyasu's army was essential to the Nagashino victory
         ally_units=[("ieyasu",10,6),("tadakatsu",9,6),("naomasa",11,6)],
         map_builder=MAP_BUILDERS[10],
+        deploy_limit=10,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("nobushige",5,12),("e_hat1",14,10),("narimasa",7,13)],
@@ -561,9 +569,7 @@ CHAPTERS = [
         objective_detail="Seize Mori's western fortress (6-8, 12). Recruit Motochika.",
         player_units=[
             ("hideyoshi",7,13), ("kanbei",6,13), ("kiyomasa",8,13),
-            ("fukushima",5,13), ("nene",9,13), ("oda_ash1",6,12),
-            ("oda_ash2",8,12), ("oda_cav1",5,12), ("oda_arch1",9,12),
-            ("oda_gun1",7,12),
+            ("fukushima",5,13), ("nene",9,13),
         ],
         enemy_units=[
             ("motonari",7,0), ("terumoto",8,1), ("ekei",6,1),
@@ -573,6 +579,7 @@ CHAPTERS = [
             ("motochika",3,13),  # recruitable!
         ],
         ally_units=[], map_builder=MAP_BUILDERS[11],
+        deploy_limit=10,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_pirate1",1,4),("e_pirate2",2,5)],
@@ -609,9 +616,7 @@ CHAPTERS = [
         objective_detail="Seize the inner keep (6-7, 6). Two bosses defend: Shimizu Muneharu commands the castle; Ankokuji Ekei leads the relief monks.",
         player_units=[
             ("hideyoshi",7,11), ("kanbei",6,11), ("kiyomasa",8,11),
-            ("fukushima",5,11), ("motochika",4,11), ("oda_ash1",6,10),
-            ("oda_arch1",8,10), ("oda_gun1",7,10), ("oda_gun2",5,10),
-            ("tsuruhime",9,11),
+            ("fukushima",5,11), ("motochika",4,11), ("tsuruhime",9,11),
         ],
         enemy_units=[
             # Two bosses: Muneharu (castle commander) + Okita (air patrol)
@@ -621,6 +626,7 @@ CHAPTERS = [
             ("e_spear2",8,7), ("e_arch1",5,8), ("e_arch2",9,8),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[12],
+        deploy_limit=10,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_pirate1",2,10),("e_pirate2",13,10)],
@@ -657,8 +663,7 @@ CHAPTERS = [
         player_units=[
             ("hideyoshi",9,12), ("kanbei",8,12), ("kiyomasa",10,12),
             ("fukushima",7,12), ("toshiie",11,12), ("nene",9,11),
-            ("oda_cav1",8,11), ("oda_cav1",10,11), ("oda_arch1",7,11),
-            ("oda_gun1",11,11), ("motochika",6,12),
+            ("motochika",6,12),
         ],
         enemy_units=[
             # Ch13 — first promoted enemies appear; mix of lv8-10 unpromoted + promoted elites
@@ -667,7 +672,10 @@ CHAPTERS = [
             ("pe_lc1",10,2), ("e_arch2",7,4), ("pe_ea1",11,4),
             ("pe_hat1",8,5), ("e_ron1",10,5), ("pe_ron1",5,3),
         ],
-        ally_units=[], map_builder=MAP_BUILDERS[13],
+        # Hosokawa Fujitaka refused Mitsuhide's call to arms — a major defection
+        ally_units=[("toshiie",10,12)],
+        map_builder=MAP_BUILDERS[13],
+        deploy_limit=11,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("pe_hat1",6,0),("pe_hat1",12,0)],
@@ -705,8 +713,7 @@ CHAPTERS = [
         player_units=[
             ("hideyoshi",8,13), ("kanbei",7,13), ("kiyomasa",9,13),
             ("fukushima",6,13), ("toshiie",10,13), ("nene",8,12),
-            ("oda_cav1",7,12), ("oda_arch1",9,12), ("oda_gun1",6,12),
-            ("oda_gun2",10,12), ("motochika",5,13),
+            ("motochika",5,13),
         ],
         enemy_units=[
             # Ch14 — Two bosses: Katsuie + Narimasa; promoted units lv9-11
@@ -715,7 +722,9 @@ CHAPTERS = [
             ("e_ash5",4,4), ("e_ash5",8,4), ("e_spear2",6,4),
             ("e_arch2",4,6), ("pe_ea1",8,6), ("pe_lc1",6,7),
         ],
+        # Maeda Toshiie defected from Katsuie mid-battle — one of history's key moments
         ally_units=[], map_builder=MAP_BUILDERS[14],
+        deploy_limit=11,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("pe_hat1",3,3),("pe_hat2",9,3)],
@@ -753,8 +762,7 @@ CHAPTERS = [
         player_units=[
             ("hideyoshi",5,12), ("kanbei",4,12), ("kiyomasa",6,12),
             ("fukushima",3,12), ("toshiie",7,12), ("nene",5,11),
-            ("oda_cav1",4,11), ("oda_arch1",6,11), ("oda_gun1",3,11),
-            ("oda_gun2",7,11), ("magoichi",8,12),
+            ("magoichi",8,12),
         ],
         enemy_units=[
             # Ch15 — Tokugawa as enemy: promoted units throughout, lv10-12
@@ -764,6 +772,7 @@ CHAPTERS = [
             ("pe_gen1",14,2),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[15],
+        deploy_limit=11,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("pe_hat1",13,1),("pe_hat2",15,1),("naomasa",14,0)],
@@ -801,8 +810,7 @@ CHAPTERS = [
         player_units=[
             ("hideyoshi",10,15), ("kanbei",9,15), ("kiyomasa",11,15),
             ("fukushima",8,15), ("toshiie",12,15), ("magoichi",7,15),
-            ("oda_gun1",9,14), ("oda_gun2",11,14), ("oda_arch1",8,14),
-            ("oda_cav1",12,14), ("motochika",6,15),
+            ("motochika",6,15),
         ],
         enemy_units=[
             # Ch16 — Odawara siege: mostly promoted defenders, lv10-13
@@ -812,8 +820,10 @@ CHAPTERS = [
             ("pe_nc1",10,6), ("e_ash5",7,7), ("e_ash5",11,7),
             ("pe_ea1",6,8), ("pe_ea1",12,8), ("pe_tm1",5,9),
         ],
+        # Tokugawa participated in the Odawara siege as a nominal Toyotomi vassal
         ally_units=[("ieyasu",10,15),("tadakatsu",9,15),("naomasa",11,15)],
         map_builder=MAP_BUILDERS[16],
+        deploy_limit=12,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("pe_gen2",7,4),("pe_gg1",11,4),("pe_hat1",9,4)],
@@ -850,9 +860,7 @@ CHAPTERS = [
         objective_detail="Hold Fushimi Castle for 10 turns. Prevent the keep from falling.",
         player_units=[
             ("ieyasu",8,7), ("tadakatsu",7,7), ("naomasa",9,7),
-            ("hanzo",8,8), ("kanbei",7,8), ("oda_gun1",7,6),
-            ("oda_gun2",9,6), ("oda_arch1",6,7), ("oda_arch2",10,7),
-            ("oda_ash1",7,9), ("oda_ash2",9,9),
+            ("hanzo",8,8), ("kanbei",7,8),
         ],
         enemy_units=[
             # Ch17 — Fushimi siege: all promoted enemies, lv11-13
@@ -862,6 +870,7 @@ CHAPTERS = [
             ("pe_ea1",7,2), ("pe_fk1",11,2), ("pe_gen1",9,1),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[17],
+        deploy_limit=10,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("pe_lc2",5,0),("pe_nc1",13,0),("pe_hat1",9,0)],
@@ -904,8 +913,7 @@ CHAPTERS = [
         player_units=[
             ("ieyasu",5,14), ("tadakatsu",4,14), ("naomasa",6,14),
             ("hanzo",5,13), ("kanbei",6,13), ("ina",7,14),
-            ("oda_cav1",4,13), ("oda_arch1",6,12), ("oda_gun1",7,13),
-            ("oda_gun2",5,12), ("toshiie",8,14),
+            ("toshiie",8,14),
         ],
         enemy_units=[
             # Ch18 — Sekigahara: fully promoted enemies, lv12-14
@@ -917,6 +925,7 @@ CHAPTERS = [
             ("masamune",19,7), ("shigezane",18,8),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[18],
+        deploy_limit=12,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("pe_hat2",10,0),("pe_hat2",12,0),("pe_sl1",8,0)],
@@ -958,8 +967,7 @@ CHAPTERS = [
         player_units=[
             ("ieyasu",10,15), ("tadakatsu",9,15), ("naomasa",8,15),
             ("ina",11,15), ("kanbei",10,14), ("hanzo",9,14),
-            ("oda_gun1",8,14), ("oda_gun2",11,14), ("oda_arch1",9,13),
-            ("oda_cav1",11,13), ("toshiie",7,15),
+            ("toshiie",7,15),
         ],
         enemy_units=[
             # Ch19 — Osaka Winter: 4 bosses + promoted forces, lv13-15
@@ -971,6 +979,7 @@ CHAPTERS = [
             ("pe_gk2",10,10), ("pe_dk1",6,6), ("pe_sr1",12,6),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[19],
+        deploy_limit=13,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("pe_ron2",8,6),("pe_ron2",10,6),("pe_ron1",9,5)],
@@ -1015,8 +1024,7 @@ CHAPTERS = [
         player_units=[
             ("ieyasu",11,17), ("tadakatsu",10,17), ("naomasa",12,17),
             ("ina",9,17), ("hanzo",11,16), ("kanbei",10,16),
-            ("oda_gun1",9,16), ("oda_gun2",12,16), ("oda_arch1",10,15),
-            ("oda_cav1",12,15), ("toshiie",8,17), ("magoichi",13,17),
+            ("toshiie",8,17), ("magoichi",13,17),
         ],
         enemy_units=[
             # Ch20 — Final Battle: max-level promoted enemies, lv14-16
@@ -1029,6 +1037,7 @@ CHAPTERS = [
             ("pe_sr1",5,10), ("pe_sr2",13,10),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[20],
+        deploy_limit=14,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("pe_hat2",8,8),("pe_hat2",10,8),("pe_hat2",9,7)],

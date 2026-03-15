@@ -106,7 +106,7 @@ class Renderer:
         return sx//TILE_SIZE + self.cam_x, sy//TILE_SIZE + self.cam_y
 
     # ── Top-level render dispatcher ───────────────────────────────────────────
-    def render(self, gs):
+    def render(self, gs, showing_help=False):
         self.screen.fill(BLACK)
         s = gs.state
         if s == STATE_TITLE:
@@ -115,6 +115,8 @@ class Renderer:
             self._render_mode_select(gs)
         elif s == STATE_SCENE:
             self._render_scene(gs)
+        elif s == STATE_PREP:
+            self._render_prep_screen(gs)
         elif s == STATE_CHAPTER_INTRO:
             self._render_chapter_intro(gs)
         elif s in (STATE_PLAYER_TURN, STATE_ENEMY_TURN, STATE_ALLY_TURN,
@@ -136,6 +138,9 @@ class Renderer:
             self._render_map(gs)
             self._render_units(gs)
             self._render_end_screen(gs, victory=(s == STATE_VICTORY))
+        # Help overlay drawn on top of everything, any state
+        if showing_help:
+            self._render_help_overlay()
 
     # ── Title ─────────────────────────────────────────────────────────────────
     def _render_title(self, gs):
@@ -964,6 +969,354 @@ class Renderer:
         prompt=("ENTER: Next Chapter | ESC: Title" if victory
                 else "ENTER: Retry | ESC: Title")
         self._blit_center(self.font_sm.render(prompt,True,LIGHT_GREY),cx,660)
+
+    # ── Pre-battle Preparation Screen ────────────────────────────────────────
+    def _render_prep_screen(self, gs):
+        """Four-tab prep screen: Deploy | Shop | Inventory | Map Preview."""
+        W, H = SCREEN_WIDTH, SCREEN_HEIGHT
+        ch = gs.current_chapter
+        # Background gradient
+        for i in range(H):
+            t = i / H
+            r = int(10 + t*25); g = int(10 + t*15); b = int(25 + t*40)
+            pygame.draw.line(self.screen, (r, g, b), (0, i), (W, i))
+
+        # ── Header ────────────────────────────────────────────────────────────
+        self._blit_center(self.font_lg.render("PRE-BATTLE PREPARATION", True, GOLD), W//2, 22)
+        ch_text = f"{ch.title}  ·  {ch.subtitle}"
+        self._blit_center(self.font_sm.render(ch_text, True, CREAM), W//2, 46)
+        # Gold display
+        gold_surf = self.font_md.render(f"Gold: {gs.gold} ryo", True, GOLD)
+        self.screen.blit(gold_surf, (W - gold_surf.get_width() - 16, 8))
+        # Deploy limit
+        n_sel = len(gs.prep_selected_units) + len(gs.prep_mercs)
+        dep_color = GREEN if n_sel <= ch.deploy_limit else RED
+        dep_surf = self.font_sm.render(
+            f"Deployed: {n_sel}/{ch.deploy_limit}", True, dep_color)
+        self.screen.blit(dep_surf, (W - dep_surf.get_width() - 16, 34))
+
+        # ── Tabs ──────────────────────────────────────────────────────────────
+        tab_y = 62
+        tab_h = 32
+        tab_w = W // 4
+        tab = getattr(gs, 'prep_tab', 0)
+        for i, name in enumerate(PREP_TAB_NAMES):
+            x = i * tab_w
+            sel = (i == tab)
+            bg  = (40, 50, 80) if sel else (15, 18, 35)
+            brd = GOLD if sel else (80, 80, 80)
+            self._draw_rounded_box(x+2, tab_y, tab_w-4, tab_h, bg, brd, r=6)
+            col = WHITE if sel else LIGHT_GREY
+            self._blit_center(self.font_sm.render(name, True, col),
+                               x + tab_w//2, tab_y + tab_h//2)
+        pygame.draw.line(self.screen, GOLD, (0, tab_y+tab_h), (W, tab_y+tab_h), 1)
+
+        content_y = tab_y + tab_h + 8
+        cur = getattr(gs, 'prep_cursor', 0)
+
+        if tab == PREP_TAB_DEPLOY:
+            self._render_prep_deploy(gs, content_y, cur)
+        elif tab == PREP_TAB_SHOP:
+            self._render_prep_shop(gs, content_y, cur)
+        elif tab == PREP_TAB_INVENTORY:
+            self._render_prep_inventory(gs, content_y, cur)
+        elif tab == PREP_TAB_MAP:
+            self._render_prep_map(gs, content_y)
+
+        # ── Bottom bar ────────────────────────────────────────────────────────
+        bar_y = H - 36
+        pygame.draw.line(self.screen, GOLD, (0, bar_y), (W, bar_y), 1)
+        hints = "◄►: Tabs   ↑↓: Select   Z/Enter: Toggle/Buy   SPACE/B: BATTLE!"
+        self._blit_center(self.font_sm.render(hints, True, LIGHT_GREY), W//2, bar_y+18)
+
+    def _render_prep_deploy(self, gs, y0, cur):
+        """Deploy tab: toggle named units in/out of the battle roster."""
+        ch = gs.current_chapter
+        avail = gs.prep_available_units
+        selected_ids = {u.unit_id for u in gs.prep_selected_units}
+        x0 = 16; col_w = (SCREEN_WIDTH - 32) // 2
+        row_h = 44
+        for i, u in enumerate(avail):
+            row_y = y0 + i * row_h
+            if row_y + row_h > SCREEN_HEIGHT - 40:
+                break
+            sel = u.unit_id in selected_ids
+            is_cur = (i == cur)
+            bg  = (30, 55, 30) if sel else (20, 20, 40)
+            brd = GOLD if is_cur else ((60, 160, 60) if sel else (50, 50, 80))
+            self._draw_rounded_box(x0, row_y, SCREEN_WIDTH - 32, row_h - 4, bg, brd, r=6)
+            # Colour circle
+            pygame.draw.circle(self.screen, u.color,
+                               (x0 + 20, row_y + row_h//2 - 2), 12)
+            pygame.draw.circle(self.screen, WHITE,
+                               (x0 + 20, row_y + row_h//2 - 2), 12, 1)
+            sym = self.font_sm.render(u.symbol[:2], True, WHITE)
+            self.screen.blit(sym, (x0+14, row_y+11))
+            # Name & class
+            name_col = GOLD if is_cur else WHITE
+            self.screen.blit(self.font_md.render(u.name, True, name_col),
+                             (x0+40, row_y+4))
+            cls_txt = f"{u.unit_class}  Lv{u.level}  HP:{u.max_hp}"
+            self.screen.blit(self.font_sm.render(cls_txt, True, LIGHT_GREY),
+                             (x0+40, row_y+24))
+            # Status badge
+            status = "[DEPLOYED]" if sel else "[ bench ]"
+            s_col  = GREEN if sel else (120, 120, 120)
+            s_surf = self.font_sm.render(status, True, s_col)
+            self.screen.blit(s_surf, (SCREEN_WIDTH - 32 - s_surf.get_width(), row_y+14))
+
+        # Deploy limit hint
+        n_sel = len(gs.prep_selected_units)
+        hint = (f"Select up to {ch.deploy_limit} units — "
+                f"{n_sel}/{ch.deploy_limit} named units chosen. "
+                f"Hire mercs in [Shop] to fill remaining slots.")
+        hint_surf = self.font_sm.render(hint, True, LIGHT_GREY)
+        self.screen.blit(hint_surf, (x0, SCREEN_HEIGHT - 64))
+
+    def _render_prep_shop(self, gs, y0, cur):
+        """Shop tab: hire mercenaries with gold."""
+        from game.constants import SHOP_PRICES
+        items = list(SHOP_PRICES.items())
+        x0 = 16; row_h = 48
+        # Merc limit info
+        n_mercs = len(gs.prep_mercs)
+        lim_surf = self.font_sm.render(
+            f"Hired mercs this chapter: {n_mercs}/{gs.prep_max_mercs}",
+            True, GOLD)
+        self.screen.blit(lim_surf, (x0, y0))
+        y0 += 22
+
+        # Class name map for display
+        _display = {
+            "merc_ashigaru": ("Ashigaru",   CLASS_ASHIGARU,   "Foot soldier. Cheap, sturdy."),
+            "merc_spearman": ("Spearman",   CLASS_SPEARMAN,   "Anti-cavalry specialist."),
+            "merc_archer":   ("Archer",     CLASS_ARCHER,     "Ranged attacker. 2-range."),
+            "merc_samurai":  ("Samurai",    CLASS_SAMURAI,    "Balanced melee fighter."),
+            "merc_cavalry":  ("Cavalry",    CLASS_CAVALRY,    "Fast mounted unit."),
+            "merc_ninja":    ("Ninja",      CLASS_NINJA,      "Evasive assassin."),
+            "merc_monk":     ("Monk",       CLASS_MONK,       "Healer. Uses staff."),
+            "merc_gunner":   ("Gunner",     CLASS_GUNNER,     "Long-range rifleman."),
+        }
+        for i, (merc_id, cost) in enumerate(items):
+            row_y = y0 + i * row_h
+            if row_y + row_h > SCREEN_HEIGHT - 48:
+                break
+            is_cur  = (i == cur)
+            can_buy = gs.gold >= cost and n_mercs < gs.prep_max_mercs
+            bg  = (30, 30, 60) if is_cur else (15, 15, 35)
+            brd = GOLD if is_cur else (50, 50, 80)
+            self._draw_rounded_box(x0, row_y, SCREEN_WIDTH//2 - 24, row_h - 4, bg, brd, r=6)
+            dname, cls, desc = _display.get(merc_id, (merc_id, CLASS_ASHIGARU, ""))
+            cd = CLASS_DATA.get(cls, {})
+            col = cd.get("color", GREY)
+            pygame.draw.circle(self.screen, col, (x0+20, row_y+row_h//2-2), 12)
+            pygame.draw.circle(self.screen, WHITE, (x0+20, row_y+row_h//2-2), 12, 1)
+            sym = self.font_sm.render(cd.get("symbol","?")[:2], True, WHITE)
+            self.screen.blit(sym, (x0+14, row_y+11))
+            name_col = GOLD if is_cur else (WHITE if can_buy else GREY)
+            self.screen.blit(self.font_md.render(dname, True, name_col), (x0+40, row_y+4))
+            self.screen.blit(self.font_sm.render(desc, True, LIGHT_GREY), (x0+40, row_y+24))
+            cost_col = GREEN if can_buy else RED
+            cost_surf = self.font_md.render(f"{cost} ryo", True, cost_col)
+            self.screen.blit(cost_surf, (SCREEN_WIDTH//2 - 30 - cost_surf.get_width(), row_y+14))
+
+        # Show currently hired mercs on right side
+        rx = SCREEN_WIDTH//2 + 8
+        self.screen.blit(self.font_md.render("Hired:", True, GOLD), (rx, y0))
+        if not gs.prep_mercs:
+            self.screen.blit(self.font_sm.render("(none)", True, GREY), (rx, y0+24))
+        else:
+            for i, m in enumerate(gs.prep_mercs):
+                my = y0 + 24 + i * 22
+                self.screen.blit(self.font_sm.render(
+                    f"{m.name}  Lv{m.level}", True, CREAM), (rx, my))
+
+    def _render_prep_inventory(self, gs, y0, cur):
+        """Inventory tab: view equipped weapons of all deployed units."""
+        units = gs.prep_selected_units + gs.prep_mercs
+        x0 = 16; row_h = 56
+        if not units:
+            self._blit_center(self.font_md.render(
+                "No units deployed yet. Go to [Deploy] tab.", True, LIGHT_GREY),
+                SCREEN_WIDTH//2, y0+80)
+            return
+        for i, u in enumerate(units):
+            row_y = y0 + i * row_h
+            if row_y + row_h > SCREEN_HEIGHT - 48:
+                break
+            is_cur = (i == cur)
+            bg  = (25, 30, 55) if is_cur else (15, 15, 35)
+            brd = GOLD if is_cur else (50, 50, 80)
+            self._draw_rounded_box(x0, row_y, SCREEN_WIDTH - 32, row_h - 4, bg, brd, r=6)
+            pygame.draw.circle(self.screen, u.color, (x0+18, row_y+28), 10)
+            self.screen.blit(self.font_md.render(u.name, True, WHITE if is_cur else CREAM),
+                             (x0+36, row_y+4))
+            self.screen.blit(self.font_sm.render(
+                f"{u.unit_class}  Lv{u.level}  HP:{u.hp}/{u.max_hp}",
+                True, LIGHT_GREY), (x0+36, row_y+24))
+            # Weapons list
+            wx = SCREEN_WIDTH//2
+            for j, w in enumerate(u.weapons):
+                equipped = (j == u.equipped_weapon_index)
+                wc = YELLOW if equipped else LIGHT_GREY
+                mark = "►" if equipped else " "
+                wtext = f"{mark}{w.name}  Mt:{w.might} Hit:{w.hit}% Uses:{w.current_uses}"
+                self.screen.blit(self.font_sm.render(wtext, True, wc),
+                                 (wx, row_y + 4 + j*18))
+        self.screen.blit(self.font_sm.render(
+            "Z/Enter: cycle equipped weapon for selected unit", True, LIGHT_GREY),
+            (x0, SCREEN_HEIGHT - 60))
+
+    def _render_prep_map(self, gs, y0):
+        """Map Preview tab: shows a zoomed-out view of the chapter map."""
+        gmap = gs.game_map
+        W = SCREEN_WIDTH; H = SCREEN_HEIGHT
+        avail_h = H - y0 - 40
+        avail_w = W
+
+        # Compute tile size to fit whole map
+        ts = min(avail_w // max(1, gmap.width), avail_h // max(1, gmap.height), 24)
+        ts = max(ts, 4)
+        map_px_w = ts * gmap.width
+        map_px_h = ts * gmap.height
+        ox = (avail_w - map_px_w) // 2
+        oy = y0 + (avail_h - map_px_h) // 2
+
+        # Draw tiles
+        for ty in range(gmap.height):
+            for tx in range(gmap.width):
+                t = gmap.get_terrain(tx, ty)
+                col = TERRAIN_DATA[t]["color"]
+                sx = ox + tx * ts; sy = oy + ty * ts
+                pygame.draw.rect(self.screen, col, (sx, sy, ts-1, ts-1))
+
+        # Draw units
+        for u in gs.enemy_units + gs.ally_units:
+            if not u.alive: continue
+            fc = {FACTION_ENEMY: (220,60,60), FACTION_ALLY: (60,220,80)}.get(u.faction, GREY)
+            pygame.draw.rect(self.screen, fc, (ox+u.x*ts, oy+u.y*ts, ts-1, ts-1))
+
+        # Draw deployed player units
+        for u in gs.prep_selected_units + gs.prep_mercs:
+            px = ox + u.x * ts; py_u = oy + u.y * ts
+            pygame.draw.rect(self.screen, (80, 160, 255), (px, py_u, ts-1, ts-1))
+            if u.is_lord:
+                pygame.draw.rect(self.screen, GOLD, (px, py_u, ts-1, ts-1), 1)
+
+        # Seize points
+        for (sx, sy) in gmap.seize_points:
+            pygame.draw.rect(self.screen, GOLD,
+                             (ox+sx*ts, oy+sy*ts, ts-1, ts-1))
+
+        self._blit_center(self.font_sm.render(
+            "Map Preview — Blue=Player  Red=Enemy  Green=Ally  Gold=Seize",
+            True, LIGHT_GREY), W//2, H-28)
+
+    # ── Help Overlay ──────────────────────────────────────────────────────────
+    def _render_help_overlay(self):
+        """Full-screen help reference overlay. Press ? or F1 to toggle."""
+        W, H = SCREEN_WIDTH, SCREEN_HEIGHT
+        ov = pygame.Surface((W, H), pygame.SRCALPHA)
+        ov.fill((0, 0, 20, 230))
+        self.screen.blit(ov, (0, 0))
+
+        cx = W // 2
+        self._blit_center(self.font_lg.render("GAME REFERENCE", True, GOLD), cx, 22)
+        pygame.draw.line(self.screen, GOLD, (40, 46), (W-40, 46), 1)
+
+        # Two-column layout
+        col1_x = 50; col2_x = W//2 + 20; y = 56
+        lh = 17   # line height
+
+        def section(title, lines, x, yref):
+            self.screen.blit(self.font_md.render(title, True, YELLOW), (x, yref))
+            yref += 22
+            for line in lines:
+                col = LIGHT_GREY if not line.startswith("  ►") else CREAM
+                self.screen.blit(self.font_sm.render(line, True, col), (x, yref))
+                yref += lh
+            return yref + 6
+
+        # ── Left column ───────────────────────────────────────────────────────
+        y = section("Controls", [
+            "Arrows/WASD  — Move cursor",
+            "Z / Enter    — Confirm / Select unit",
+            "X / Esc      — Cancel / Deselect",
+            "A            — Attack (with selected unit)",
+            "H            — Heal (with selected unit)",
+            "W            — Wait (end unit's turn)",
+            "T            — Talk / Recruit adjacent unit",
+            "E            — Seize (lord on seize tile)",
+            "I            — Open Stat Sheet",
+            "Space        — End Player Turn",
+            "?  / F1      — Toggle this Help screen",
+        ], col1_x, y)
+
+        y = section("Combat", [
+            "Attack = STR + Weapon Might",
+            "Hit% = SKL×2 + Weapon Hit + LCK/2",
+            "Avoid = SPD×2 + LCK/2 − weight",
+            "Crit = SKL/2 + Weapon Crit",
+            "Counter-attack if enemy in range",
+            "Double-attack if SPD ≥ enemy SPD+4",
+            "Weapon triangle gives +1 Dmg / +15 Hit:",
+            "  Katana > Chain > Spear > Katana",
+            "  Bow / Gun > Flying units",
+        ], col1_x, y)
+
+        y = section("Terrain", [
+            "Plain: no bonus  Forest: Def+1 Avo+20",
+            "Fort: Def+2 Avo+20  Castle/Gate: Def+3-4",
+            "Mountain: Def+2 Avo+30  (slow movement)",
+            "River/Sea: impassable unless water-walk",
+            "Peak/Cliff: impassable",
+        ], col1_x, y)
+
+        # ── Right column ──────────────────────────────────────────────────────
+        ry = 56
+        ry = section("Promotion (UNIQUE to this game!)", [
+            "Units promote at Level 10+ — but NOT forced.",
+            "Open the Stat Sheet (I) of your unit.",
+            "If eligible, a [PROMOTE] button appears.",
+            "Choose a promotion class from the options.",
+            "Stats increase + new class abilities unlock.",
+            "  ► This is NOT like Fire Emblem!",
+            "  ► In FE you use an item. Here: Stat Sheet.",
+            "Promoted units cannot promote again.",
+            "Enemies start promoting in Chapter 13+.",
+        ], col2_x, ry)
+
+        ry = section("Pre-Battle Prep Screen", [
+            "Appears before every chapter.",
+            "Deploy: Pick which named units to send.",
+            "Shop: Hire mercenaries with gold (ryo).",
+            "  ► Mercs are weaker than named officers.",
+            "  ► Gold earned: 150 ryo per chapter clear.",
+            "Inventory: View / cycle unit weapons.",
+            "Map Preview: Scout the battlefield.",
+            "SPACE / B: Confirm and start the battle.",
+        ], col2_x, ry)
+
+        ry = section("Objectives & Victory", [
+            "Rout Enemy: Defeat ALL enemies.",
+            "Defeat Boss: Kill all boss (LORD♦) enemies.",
+            "Seize: Move your lord to the seize tile.",
+            "Defend: Survive the required turn count.",
+            "Defeat = all your lords are dead.",
+        ], col2_x, ry)
+
+        ry = section("Recruit / Allies", [
+            "Units marked [!] on map can be recruited.",
+            "Use Talk (T) with the right unit adjacent.",
+            "Recruited units join permanently.",
+            "Ally units act automatically each turn.",
+        ], col2_x, ry)
+
+        # Close hint at bottom
+        pygame.draw.line(self.screen, GOLD, (40, H-34), (W-40, H-34), 1)
+        self._blit_center(
+            self.font_sm.render("Press ? or F1 to close this screen", True, LIGHT_GREY),
+            cx, H - 18)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
     def _blit_center(self, surf, cx, cy):

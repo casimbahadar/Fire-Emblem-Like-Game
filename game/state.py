@@ -5,7 +5,7 @@ Includes: recruit mechanic, reinforcement waves, flying/mounted movement
 import copy
 from game.constants import *
 from game.chapter import CHAPTERS
-from game.unit import create_unit_roster
+from game.unit import create_unit_roster, create_mercenary
 from game.ai import EnemyAI
 from game.combat import resolve_combat, resolve_heal
 from game.dialogs import get_pre_combat_dialog, reset_dialog_flags
@@ -26,6 +26,22 @@ class GameState:
         self.turn        = 1
         self.phase       = FACTION_PLAYER
         self.state       = STATE_TITLE
+
+        # ── Economy ───────────────────────────────────────────────────────────
+        self.gold = STARTING_GOLD
+
+        # ── Prep-screen state ─────────────────────────────────────────────────
+        # Available named-unit pool for current chapter (deep-copied from roster)
+        self.prep_available_units: list = []
+        # Which units the player has selected for deployment (subset ≤ deploy_limit)
+        self.prep_selected_units: list  = []
+        # Mercenaries purchased this prep phase (fresh each chapter)
+        self.prep_mercs: list           = []
+        # Cursor state in the prep screen
+        self.prep_tab       = PREP_TAB_DEPLOY
+        self.prep_cursor    = 0          # index within current tab list
+        # Max mercs that can be hired per chapter (always ≤ deploy_limit)
+        self.prep_max_mercs = 3
 
         self.selected_unit   = None
         self.cursor_x        = 0
@@ -81,7 +97,10 @@ class GameState:
     def load_chapter(self, index):
         self.chapter_index   = index
         self.current_chapter = CHAPTERS[index]
-        gmap, players, enemies, allies, waves = self.current_chapter.build(self.roster)
+        ch = self.current_chapter
+
+        # Build the full chapter data (map + all unit placements)
+        gmap, players, enemies, allies, waves = ch.build(self.roster)
 
         # Casual mode: revive player units that died last chapter at full HP
         if not self.classic_mode and self._casual_dead:
@@ -91,16 +110,29 @@ class GameState:
                     dead_u.hp = dead_u.max_hp
                     dead_u.alive = True
                     dead_u.faction = FACTION_PLAYER
-                    # Place off-map initially; chapter placement can override
                     dead_u.x, dead_u.y = 0, 0
                     players.append(dead_u)
             self._casual_dead = []
 
         self.game_map       = gmap
-        self.player_units   = players
         self.enemy_units    = enemies
         self.ally_units     = allies
         self.reinforce_waves= waves
+
+        # ── Prep screen initialisation ────────────────────────────────────────
+        # All named player units available for this chapter
+        self.prep_available_units = players
+        self.prep_mercs           = []
+        self.prep_tab             = PREP_TAB_DEPLOY
+        self.prep_cursor          = 0
+        self.prep_max_mercs       = max(1, ch.deploy_limit - len(players))
+
+        # Auto-select up to deploy_limit named units (player can adjust in prep)
+        limit = ch.deploy_limit
+        self.prep_selected_units = list(players[:limit])
+
+        # Keep player_units empty until prep is confirmed
+        self.player_units = []
 
         self.turn    = 1
         self.phase   = FACTION_PLAYER
@@ -117,13 +149,7 @@ class GameState:
         self.stat_sheet_unit = None
         self._defend_turns_survived = 0
 
-        for u in self.all_units():
-            u.reset_turn()
-
-        self.ai_controller = EnemyAI(self)
-
-        # Pre-battle scene dialog → shows before chapter intro
-        ch = self.current_chapter
+        # ── Flow: scene → prep → chapter intro ───────────────────────────────
         if ch.scene_dialog:
             self.scene_dialog     = ch.scene_dialog
             self.scene_dialog_idx = 0
@@ -131,9 +157,52 @@ class GameState:
         else:
             self.scene_dialog     = []
             self.scene_dialog_idx = 0
-            self.state = STATE_CHAPTER_INTRO
+            self.state = STATE_PREP
 
-        # Cursor to first player lord
+        self.cursor_x = 0
+        self.cursor_y = 0
+
+    def confirm_prep_and_start(self):
+        """
+        Called when the player hits 'Battle!' on the prep screen.
+        Deploys selected named units + purchased mercs onto the map
+        using the chapter's player_unit_defs placement data.
+        """
+        ch = self.current_chapter
+        import copy as _copy
+
+        # Build id→position map from chapter's original unit defs
+        pos_map = {uid: (x, y) for uid, x, y in ch.player_unit_defs}
+
+        deployed = []
+        for u in self.prep_selected_units:
+            if u.unit_id in pos_map:
+                u.x, u.y = pos_map[u.unit_id]
+            else:
+                # Shouldn't happen, but just in case
+                u.x, u.y = 0, 0
+            deployed.append(u)
+
+        # Place mercs at the first few spawn positions not taken by named units
+        taken_positions = {(u.x, u.y) for u in deployed}
+        # Use last positions in player_unit_defs as fallback merc spawn points
+        fallback = [(x, y) for _, x, y in ch.player_unit_defs
+                    if (x, y) not in taken_positions]
+        for i, merc in enumerate(self.prep_mercs):
+            if i < len(fallback):
+                merc.x, merc.y = fallback[i]
+            else:
+                merc.x, merc.y = 0, 0
+            deployed.append(merc)
+
+        self.player_units = deployed
+
+        for u in self.all_units():
+            u.reset_turn()
+
+        self.ai_controller = EnemyAI(self)
+        self.state = STATE_CHAPTER_INTRO
+
         lords = [u for u in self.player_units if u.is_lord and u.alive]
         if lords:
             self.cursor_x = lords[0].x
@@ -452,7 +521,8 @@ class GameState:
         if not self.victory:
             self.victory = True
             self.state   = STATE_VICTORY
-            self.push_message("Victory!")
+            self.gold   += GOLD_PER_CHAPTER
+            self.push_message(f"Victory!  (+{GOLD_PER_CHAPTER} gold)")
 
     def _trigger_defeat(self):
         if not self.defeat:

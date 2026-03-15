@@ -103,6 +103,7 @@ def main():
     recruit_target    = None
     showing_boss_dialog = False
     in_tutorial       = False
+    showing_help      = False   # always-accessible help overlay (?/F1)
 
     def reset_interaction():
         nonlocal preview_target, attack_targets, attack_cursor
@@ -146,8 +147,9 @@ def main():
         in_tutorial = False
         gs.chapter_index = idx
         gs.load_chapter(idx)
-        gs.state = STATE_CHAPTER_INTRO
-        renderer.center_camera(gs.game_map, gs.cursor_x, gs.cursor_y)
+        # load_chapter sets state to STATE_SCENE or STATE_PREP automatically
+        if gs.game_map:
+            renderer.center_camera(gs.game_map, gs.cursor_x, gs.cursor_y)
 
     # ── Action dispatcher (shared between keyboard and touch) ─────────────────
     def do_action(action):
@@ -159,6 +161,7 @@ def main():
         nonlocal heal_targets, heal_cursor, showing_preview, showing_heal_sel
         nonlocal showing_stat_sheet, stat_sheet_unit
         nonlocal showing_recruit, recruit_target, showing_boss_dialog
+        nonlocal showing_help
 
         # ── Title screen ─────────────────────────────────────────────────────
         if gs.state == STATE_TITLE:
@@ -185,8 +188,68 @@ def main():
             if action in ("confirm", "any_key", "cancel"):
                 gs.scene_dialog_idx += 1
                 if gs.scene_dialog_idx >= len(gs.scene_dialog):
-                    # Scene finished → go to chapter intro
-                    gs.state = STATE_CHAPTER_INTRO
+                    # Scene finished → go to prep screen
+                    gs.state = STATE_PREP
+            return
+
+        # ── Pre-battle prep screen ────────────────────────────────────────────
+        if gs.state == STATE_PREP:
+            if action == "help":
+                showing_help = not showing_help
+                return
+            avail   = gs.prep_available_units
+            tab     = gs.prep_tab
+            cur     = gs.prep_cursor
+            ch      = gs.current_chapter
+
+            if action in ("left", "right"):
+                direction = -1 if action == "left" else 1
+                gs.prep_tab    = (tab + direction) % len(PREP_TAB_NAMES)
+                gs.prep_cursor = 0
+            elif action in ("up", "down"):
+                direction = -1 if action == "up" else 1
+                if tab == PREP_TAB_DEPLOY:
+                    gs.prep_cursor = (cur + direction) % max(1, len(avail))
+                elif tab == PREP_TAB_SHOP:
+                    from game.constants import SHOP_PRICES
+                    gs.prep_cursor = (cur + direction) % max(1, len(SHOP_PRICES))
+                elif tab == PREP_TAB_INVENTORY:
+                    all_u = gs.prep_selected_units + gs.prep_mercs
+                    gs.prep_cursor = (cur + direction) % max(1, len(all_u))
+            elif action == "confirm":
+                if tab == PREP_TAB_DEPLOY:
+                    # Toggle selected unit
+                    if avail and cur < len(avail):
+                        u = avail[cur]
+                        if u in gs.prep_selected_units:
+                            gs.prep_selected_units.remove(u)
+                        elif len(gs.prep_selected_units) + len(gs.prep_mercs) < ch.deploy_limit:
+                            gs.prep_selected_units.append(u)
+                elif tab == PREP_TAB_SHOP:
+                    from game.constants import SHOP_PRICES
+                    from game.unit import create_mercenary
+                    items = list(SHOP_PRICES.items())
+                    if cur < len(items):
+                        merc_id, cost = items[cur]
+                        total_dep = len(gs.prep_selected_units) + len(gs.prep_mercs)
+                        if (gs.gold >= cost and
+                                len(gs.prep_mercs) < gs.prep_max_mercs and
+                                total_dep < ch.deploy_limit):
+                            gs.gold -= cost
+                            gs.prep_mercs.append(
+                                create_mercenary(merc_id, gs.chapter_index))
+                elif tab == PREP_TAB_INVENTORY:
+                    all_u = gs.prep_selected_units + gs.prep_mercs
+                    if cur < len(all_u):
+                        u = all_u[cur]
+                        if u.weapons:
+                            u.equipped_weapon_index = (
+                                u.equipped_weapon_index + 1) % len(u.weapons)
+            elif action in ("battle", "end_turn"):
+                # Confirm prep and start battle
+                if gs.prep_selected_units or gs.prep_mercs:
+                    gs.confirm_prep_and_start()
+                    renderer.center_camera(gs.game_map, gs.cursor_x, gs.cursor_y)
             return
 
         # ── Boss dialog ───────────────────────────────────────────────────────
@@ -444,6 +507,10 @@ def main():
                     do_action("confirm")
                 elif gs.state == STATE_SCENE:
                     do_action("confirm")
+                elif gs.state == STATE_PREP:
+                    # Clicking right half of screen = "Battle!" shortcut
+                    if mx > SCREEN_WIDTH * 3 // 4 and my > SCREEN_HEIGHT - 60:
+                        do_action("battle")
                 elif gs.state == STATE_CHAPTER_INTRO:
                     gs.start_player_turn()
                     renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
@@ -494,8 +561,29 @@ def main():
                         gs.start_player_turn()
                         renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
 
+                # ── Prep screen ───────────────────────────────────────────────
+                elif gs.state == STATE_PREP:
+                    if key in (pygame.K_SLASH, pygame.K_F1):
+                        showing_help = not showing_help
+                    elif key in (pygame.K_LEFT,  pygame.K_a): do_action("left")
+                    elif key in (pygame.K_RIGHT, pygame.K_d): do_action("right")
+                    elif key in (pygame.K_UP,    pygame.K_w): do_action("up")
+                    elif key in (pygame.K_DOWN,  pygame.K_s): do_action("down")
+                    elif key in (pygame.K_z, pygame.K_RETURN):            do_action("confirm")
+                    elif key in (pygame.K_SPACE, pygame.K_b):             do_action("battle")
+                    elif key in (pygame.K_x, pygame.K_ESCAPE):            do_action("cancel")
+
                 # ── Player turn (and tutorial) ────────────────────────────────
                 elif gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
+                    # Help overlay toggle (any time during player turn)
+                    if key in (pygame.K_SLASH, pygame.K_F1):
+                        showing_help = not showing_help; continue
+                    if showing_help:
+                        if key in (pygame.K_SLASH, pygame.K_F1,
+                                   pygame.K_x, pygame.K_ESCAPE):
+                            showing_help = False
+                        continue
+
                     # Tutorial skip
                     if key == pygame.K_s and gs.tutorial.active:
                         gs.tutorial.skip(); begin_chapter(0); continue
@@ -563,7 +651,7 @@ def main():
             gs.run_enemy_turn()
 
         # ── Render ────────────────────────────────────────────────────────────
-        renderer.render(gs)
+        renderer.render(gs, showing_help=showing_help)
 
         # ── Overlays on top (order matters) ───────────────────────────────────
         if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):

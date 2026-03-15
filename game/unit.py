@@ -1701,3 +1701,48 @@ def create_unit_roster():
     _generic("oda_blm1",  "Oda Blade Monk",  CLASS_BLADE_MONK,    FACTION_PLAYER, 3, ["iron_katana","iron_naginata"],   (150,90,50))
 
     return units
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mercenary shop units — weaker than named characters, buyable in prep screen
+# ─────────────────────────────────────────────────────────────────────────────
+
+_MERC_GROWTH = {"hp": 30, "str": 30, "mag": 20, "skl": 30,
+                "spd": 30, "lck": 20, "def": 28, "res": 18}
+
+def create_mercenary(merc_id, chapter_index=0):
+    """
+    Create a fresh buyable mercenary scaled to chapter number.
+    Mercs are intentionally weaker than named player characters.
+    chapter_index 0-19 gives a mild level bump (max +5 levels).
+    """
+    level = max(1, 1 + chapter_index // 4)   # lv1 ch1-3, lv2 ch4-7, etc.
+    _MERC_DEFS = {
+        "merc_ashigaru": ("Hired Ashigaru",   CLASS_ASHIGARU,   ["iron_yari",  "iron_tanto"],     (120, 100, 80)),
+        "merc_spearman": ("Hired Spearman",   CLASS_SPEARMAN,   ["iron_yari",  "iron_naginata"],  (120, 110, 90)),
+        "merc_archer":   ("Hired Archer",     CLASS_ARCHER,     ["iron_bow",   "iron_tanto"],     (100, 130, 80)),
+        "merc_samurai":  ("Hired Samurai",    CLASS_SAMURAI,    ["iron_katana","iron_tanto"],     (110, 90,  60)),
+        "merc_cavalry":  ("Hired Cavalry",    CLASS_CAVALRY,    ["iron_yari",  "iron_katana"],    (90,  100, 130)),
+        "merc_ninja":    ("Hired Ninja",      CLASS_NINJA,      ["iron_tanto", "iron_chain"],     (60,  60,  80)),
+        "merc_monk":     ("Hired Monk",       CLASS_MONK,       ["heal_staff", "iron_tanto"],     (200, 180, 140)),
+        "merc_gunner":   ("Hired Gunner",     CLASS_GUNNER,     ["iron_gun",   "iron_tanto"],     (130, 120, 90)),
+    }
+    if merc_id not in _MERC_DEFS:
+        raise KeyError(f"Unknown merc type: {merc_id}")
+    name, cls, weapons, color = _MERC_DEFS[merc_id]
+    u = Unit(
+        merc_id, name, cls, FACTION_PLAYER, level=level,
+        weapon_ids=weapons, portrait_color=color,
+        bio="A mercenary hired for this campaign. Loyal to gold, not glory.",
+        growth_rates=_MERC_GROWTH,
+    )
+    # Mercs have reduced stats — about 75% of a named unit's combat power
+    u.max_hp = max(8, u.max_hp - 4)
+    u.hp     = u.max_hp
+    u.str_   = max(2, u.str_  - 2)
+    u.mag    = max(1, u.mag   - 1)
+    u.skl    = max(2, u.skl   - 2)
+    u.spd    = max(2, u.spd   - 2)
+    u.def_   = max(1, u.def_  - 2)
+    u.res    = max(1, u.res   - 1)
+    return u

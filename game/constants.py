@@ -739,6 +739,7 @@ STATE_TITLE         = "title"
 STATE_MODE_SELECT   = "mode_select"
 STATE_SCENE         = "scene"          # pre-battle character dialogue cutscene
 STATE_CHAPTER_INTRO = "chapter_intro"
+STATE_PREP          = "prep"           # pre-battle preparation (deploy / shop / inventory / map)
 STATE_PLAYER_TURN   = "player_turn"
 STATE_ENEMY_TURN    = "enemy_turn"
 STATE_ALLY_TURN     = "ally_turn"
@@ -749,6 +750,27 @@ STATE_MENU          = "menu"
 STATE_STAT_SHEET    = "stat_sheet"
 STATE_RECRUIT       = "recruit"
 STATE_REINFORCE     = "reinforce"
+
+# Prep-screen tabs
+PREP_TAB_DEPLOY    = 0
+PREP_TAB_SHOP      = 1
+PREP_TAB_INVENTORY = 2
+PREP_TAB_MAP       = 3
+PREP_TAB_NAMES     = ["Deploy", "Shop", "Inventory", "Map Preview"]
+
+# Shop mercenary prices (gold cost)
+SHOP_PRICES = {
+    "merc_ashigaru":  50,
+    "merc_spearman":  60,
+    "merc_archer":    70,
+    "merc_samurai":   90,
+    "merc_cavalry":  120,
+    "merc_ninja":    100,
+    "merc_monk":      80,
+    "merc_gunner":    95,
+}
+STARTING_GOLD = 300      # gold player starts chapter 1 with
+GOLD_PER_CHAPTER = 150   # bonus gold awarded at chapter clear
 
 # Cursor / selection modes
 CURSOR_FREE     = "free"
