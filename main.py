@@ -160,6 +160,26 @@ def main():
         nonlocal showing_stat_sheet, stat_sheet_unit
         nonlocal showing_recruit, recruit_target, showing_boss_dialog
 
+        # ── Title screen ─────────────────────────────────────────────────────
+        if gs.state == STATE_TITLE:
+            if action == "confirm":
+                gs._mode_cursor = 0
+                gs.state = STATE_MODE_SELECT
+            return
+
+        # ── Mode select screen ────────────────────────────────────────────────
+        if gs.state == STATE_MODE_SELECT:
+            if action == "left":
+                gs._mode_cursor = 0
+            elif action == "right":
+                gs._mode_cursor = 1
+            elif action == "confirm":
+                gs.classic_mode = (gs._mode_cursor == 0)
+                start_tutorial()
+            elif action == "cancel":
+                gs.state = STATE_TITLE
+            return
+
         # ── Boss dialog ───────────────────────────────────────────────────────
         if showing_boss_dialog:
             if action in ("confirm","any_key","attack","cancel"):
@@ -406,6 +426,13 @@ def main():
                         handle_map_click(mx,my)
                 elif gs.state == STATE_TITLE:
                     do_action("confirm")
+                elif gs.state == STATE_MODE_SELECT:
+                    # Tap left half = Classic, right half = Casual, then confirm
+                    if mx < SCREEN_WIDTH // 2:
+                        gs._mode_cursor = 0
+                    else:
+                        gs._mode_cursor = 1
+                    do_action("confirm")
                 elif gs.state == STATE_CHAPTER_INTRO:
                     gs.start_player_turn()
                     renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
@@ -422,13 +449,27 @@ def main():
                 # ── Title ─────────────────────────────────────────────────────
                 if gs.state == STATE_TITLE:
                     if key in (pygame.K_RETURN, pygame.K_z):
-                        # Start tutorial
-                        start_tutorial()
+                        # Go to mode selection before starting
+                        gs._mode_cursor = 0  # default Classic
+                        gs.state = STATE_MODE_SELECT
                     elif key == pygame.K_s:
-                        # Skip tutorial, go to chapter 1
-                        begin_chapter(0)
+                        # Skip tutorial shortcut — still pick mode first
+                        gs._mode_cursor = 0
+                        gs.state = STATE_MODE_SELECT
                     elif key == pygame.K_ESCAPE:
                         running = False
+
+                # ── Mode Select ───────────────────────────────────────────────
+                elif gs.state == STATE_MODE_SELECT:
+                    if key in (pygame.K_LEFT, pygame.K_a):
+                        gs._mode_cursor = 0
+                    elif key in (pygame.K_RIGHT, pygame.K_d):
+                        gs._mode_cursor = 1
+                    elif key in (pygame.K_RETURN, pygame.K_z, pygame.K_SPACE):
+                        gs.classic_mode = (gs._mode_cursor == 0)
+                        start_tutorial()
+                    elif key == pygame.K_ESCAPE:
+                        gs.state = STATE_TITLE
 
                 # ── Chapter intro ─────────────────────────────────────────────
                 elif gs.state == STATE_CHAPTER_INTRO:

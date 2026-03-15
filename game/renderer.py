@@ -111,6 +111,8 @@ class Renderer:
         s = gs.state
         if s == STATE_TITLE:
             self._render_title(gs)
+        elif s == STATE_MODE_SELECT:
+            self._render_mode_select(gs)
         elif s == STATE_CHAPTER_INTRO:
             self._render_chapter_intro(gs)
         elif s in (STATE_PLAYER_TURN, STATE_ENEMY_TURN, STATE_ALLY_TURN,
@@ -164,6 +166,89 @@ class Renderer:
         for line in controls:
             self._blit_center(self.font_sm.render(line,True,LIGHT_GREY),cx,y)
             y += 22
+
+    # ── Mode Select ───────────────────────────────────────────────────────────
+    def _render_mode_select(self, gs):
+        """Classic vs Casual difficulty selection screen."""
+        # Background gradient (same as title)
+        for i in range(SCREEN_HEIGHT):
+            t = i / SCREEN_HEIGHT
+            pygame.draw.line(self.screen,
+                             (int(20+t*60), int(10+t*20), int(5+t*10)),
+                             (0, i), (SCREEN_WIDTH, i))
+        cx = SCREEN_WIDTH // 2
+        cy = SCREEN_HEIGHT // 2
+
+        # Header
+        self._blit_center(self.font_lg.render("Choose Your Mode", True, GOLD), cx, cy - 190)
+        pygame.draw.line(self.screen, GOLD, (cx-300, cy-162), (cx+300, cy-162), 2)
+
+        mode_sel = getattr(gs, '_mode_cursor', 0)  # 0 = Classic, 1 = Casual
+
+        # ── Classic box ──────────────────────────────────────────────────────
+        classic_border = GOLD if mode_sel == 0 else (80, 80, 80)
+        classic_bg     = (40, 20, 10) if mode_sel == 0 else (20, 20, 20)
+        self._draw_rounded_box(cx - 260, cy - 145, 230, 240, classic_bg, classic_border, r=12)
+
+        sword = "⚔"
+        self._blit_center(self.font_lg.render(sword, True, (200, 80, 40)), cx - 145, cy - 115)
+        self._blit_center(self.font_md.render("CLASSIC", True, GOLD if mode_sel==0 else LIGHT_GREY),
+                          cx - 145, cy - 75)
+        classic_lines = [
+            "Permanent death.",
+            "Fallen officers",
+            "are gone forever.",
+            "",
+            "Every decision",
+            "carries weight.",
+            "True Bushido.",
+        ]
+        ly = cy - 48
+        for line in classic_lines:
+            col = CREAM if mode_sel == 0 else (120, 120, 120)
+            self._blit_center(self.font_sm.render(line, True, col), cx - 145, ly)
+            ly += 20
+
+        # ── Casual box ───────────────────────────────────────────────────────
+        casual_border  = GOLD if mode_sel == 1 else (80, 80, 80)
+        casual_bg      = (10, 30, 50) if mode_sel == 1 else (20, 20, 20)
+        self._draw_rounded_box(cx + 30, cy - 145, 230, 240, casual_bg, casual_border, r=12)
+
+        sakura = "✿"
+        self._blit_center(self.font_lg.render(sakura, True, (100, 180, 240)), cx + 145, cy - 115)
+        self._blit_center(self.font_md.render("CASUAL", True, GOLD if mode_sel==1 else LIGHT_GREY),
+                          cx + 145, cy - 75)
+        casual_lines = [
+            "Units revive at",
+            "the start of the",
+            "next chapter.",
+            "",
+            "Focus on story",
+            "and strategy",
+            "without regret.",
+        ]
+        ly = cy - 48
+        for line in casual_lines:
+            col = CREAM if mode_sel == 1 else (120, 120, 120)
+            self._blit_center(self.font_sm.render(line, True, col), cx + 145, ly)
+            ly += 20
+
+        # ── Selection indicator ───────────────────────────────────────────────
+        if mode_sel == 0:
+            label = "CLASSIC selected — deaths are permanent"
+        else:
+            label = "CASUAL selected — fallen units return next chapter"
+        self._blit_center(self.font_md.render(label, True, GOLD), cx, cy + 115)
+
+        # ── Controls hint ─────────────────────────────────────────────────────
+        hints = [
+            "← / → or Left / Right : Switch mode",
+            "Enter / Z / Tap : Confirm",
+        ]
+        hy = cy + 150
+        for h in hints:
+            self._blit_center(self.font_sm.render(h, True, LIGHT_GREY), cx, hy)
+            hy += 22
 
     # ── Chapter Intro ─────────────────────────────────────────────────────────
     def _render_chapter_intro(self, gs):
@@ -308,6 +393,10 @@ class Renderer:
         self.screen.blit(self.font_md.render(f"Turn {gs.turn}",True,GOLD),(x0,y)); y+=28
         self.screen.blit(self.font_sm.render(phase_str,True,phase_col),(x0,y)); y+=20
         self.screen.blit(self.font_sm.render(gs.game_map.name,True,LIGHT_GREY),(x0,y)); y+=18
+        # Mode badge
+        mode_label = "⚔ Classic" if getattr(gs,"classic_mode",True) else "✿ Casual"
+        mode_col   = (220,80,40) if getattr(gs,"classic_mode",True) else (80,180,240)
+        self.screen.blit(self.font_sm.render(mode_label,True,mode_col),(x0,y)); y+=18
         pygame.draw.line(self.screen,GOLD,(x0,y),(p.right-10,y),1); y+=8
 
         hovered = gs.unit_at(gs.cursor_x,gs.cursor_y)
