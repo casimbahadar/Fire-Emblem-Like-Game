@@ -149,6 +149,19 @@ CLASS_STORM_RIDER    = "Storm Rider"      # Ultra-fast dual-blade sky assassin
 CLASS_TENGU_MASTER   = "Tengu Master"     # Ninja-style magic flyer
 CLASS_SKY_LANCER     = "Sky Lancer"       # Heavy armored flying spearman
 CLASS_DRAGON_KNIGHT  = "Dragon Knight"    # Mounted on war-dragon — supreme flyer
+# ── Magical classes (12 new) ──────────────────────────────────────────────────
+CLASS_SPIRIT_DANCER  = "Spirit Dancer"    # Flying — offensive wind/spirit magic
+CLASS_KITSUNE_SAGE   = "Kitsune Sage"     # Flying — fox-spirit illusionist
+CLASS_VOID_PROPHET   = "Void Prophet"     # Foot — dark curse caster, AoE debuffer
+CLASS_SHRINE_ORACLE  = "Shrine Oracle"    # Foot — light healing + barrier magic
+CLASS_CELESTIAL_MONK = "Celestial Monk"   # Foot — promoted Monk, strongest healer
+CLASS_JADE_SORCERESS = "Jade Sorceress"   # Foot — high magic offensive, fragile
+CLASS_THUNDER_SHAMAN = "Thunder Shaman"   # Mounted — lightning magic on horseback
+CLASS_BLOOD_ASCETIC  = "Blood Ascetic"    # Foot — sacrifices HP to deal magic damage
+CLASS_MOON_RIDER     = "Moon Rider"       # Flying — lunar magic + naginata, fast
+CLASS_PHANTOM_KNIGHT = "Phantom Knight"   # Mounted — cursed cavalry, magic + melee
+CLASS_STAR_DANCER    = "Star Dancer"      # Flying — offensive celestial magic
+CLASS_DEATH_ORACLE   = "Death Oracle"     # Foot — ultimate dark mage, frail glass cannon
 # ── Additional Mounted Classes ─────────────────────────────────────────────────
 CLASS_LANCE_CAVALRY  = "Lance Cavalry"    # Spear-specialist cavalry
 CLASS_WAR_ELEPHANT   = "War Elephant"     # Massive, slow, devastating (Korean/Ming)
@@ -162,10 +175,15 @@ STATE_TUTORIAL       = "tutorial"
 # Flying & mounted sets (for movement rules)
 FLYING_CLASSES  = {CLASS_PEGASUS_KNIGHT, CLASS_WYVERN_KNIGHT, CLASS_FALCON_KNIGHT,
                    CLASS_EAGLE_ARCHER, CLASS_STORM_RIDER, CLASS_TENGU_MASTER,
-                   CLASS_SKY_LANCER, CLASS_DRAGON_KNIGHT}
+                   CLASS_SKY_LANCER, CLASS_DRAGON_KNIGHT,
+                   # Magical flying
+                   CLASS_SPIRIT_DANCER, CLASS_KITSUNE_SAGE, CLASS_MOON_RIDER,
+                   CLASS_STAR_DANCER}
 MOUNTED_CLASSES = {CLASS_CAVALRY, CLASS_HATAMOTO, CLASS_MOUNTED_ARCHER,
                    CLASS_LANCE_CAVALRY, CLASS_LIGHT_CAVALRY, CLASS_GREAT_KNIGHT,
-                   CLASS_NOBLE_CAVALRY}
+                   CLASS_NOBLE_CAVALRY,
+                   # Magical mounted
+                   CLASS_THUNDER_SHAMAN, CLASS_PHANTOM_KNIGHT}
 WATER_CLASSES   = {CLASS_PIRATE}   # Can traverse rivers/sea at normal cost
 
 # Class base stats: hp, str, mag, skl, spd, lck, def, res, move, weapons_allowed, color, symbol
@@ -369,6 +387,85 @@ CLASS_DATA = {
         "color": (220, 200, 80), "symbol": "NC",
         "mounted": True,
         "description": "Lord-class cavalry. Balanced, fast, and commanding on horseback."
+    },
+    # ── Magical Classes ───────────────────────────────────────────────────────
+    CLASS_SPIRIT_DANCER: {
+        "hp": 22, "str": 4,  "mag": 16, "skl": 13, "spd": 16, "lck": 12,"def": 4,  "res": 16,
+        "move": 8, "weapons": [WEAPON_STAFF, WEAPON_NAGINATA],
+        "color": (180, 230, 255), "symbol": "SD",
+        "flying": True,
+        "description": "Airborne spirit medium. Channels wind kami into offensive bursts. Fragile but blazing fast."
+    },
+    CLASS_KITSUNE_SAGE: {
+        "hp": 20, "str": 3,  "mag": 18, "skl": 14, "spd": 14, "lck": 16,"def": 3,  "res": 18,
+        "move": 7, "weapons": [WEAPON_STAFF, WEAPON_TANTO],
+        "color": (255, 210, 140), "symbol": "KS",
+        "flying": True,
+        "description": "Fox-spirit illusionist. Highest magic stat of all flying units. Can confuse enemies with illusions."
+    },
+    CLASS_VOID_PROPHET: {
+        "hp": 24, "str": 2,  "mag": 17, "skl": 11, "spd": 8,  "lck": 5, "def": 4,  "res": 15,
+        "move": 4, "weapons": [WEAPON_STAFF],
+        "color": (60, 20, 80), "symbol": "VP",
+        "description": "Dark curse weaver. Deploys AoE debuffs that linger on the battlefield. Cannot attack physically."
+    },
+    CLASS_SHRINE_ORACLE: {
+        "hp": 26, "str": 3,  "mag": 14, "skl": 12, "spd": 9,  "lck": 15,"def": 5,  "res": 16,
+        "move": 5, "weapons": [WEAPON_STAFF],
+        "color": (255, 240, 200), "symbol": "SO",
+        "description": "Sacred shrine priestess. Strongest healer in the game. Can bestow a barrier that absorbs one hit."
+    },
+    CLASS_CELESTIAL_MONK: {
+        "hp": 30, "str": 6,  "mag": 16, "skl": 13, "spd": 11, "lck": 12,"def": 8,  "res": 17,
+        "move": 5, "weapons": [WEAPON_STAFF, WEAPON_NAGINATA],
+        "color": (230, 220, 255), "symbol": "CM",
+        "description": "Promoted Monk touched by heaven. Combines powerful healing with melee capability. Rare and powerful."
+    },
+    CLASS_JADE_SORCERESS: {
+        "hp": 18, "str": 2,  "mag": 20, "skl": 15, "spd": 10, "lck": 8, "def": 2,  "res": 14,
+        "move": 4, "weapons": [WEAPON_STAFF],
+        "color": (140, 220, 160), "symbol": "JS",
+        "description": "Channeller of jade dragon magic. Highest raw MAG in the game but almost no physical defence."
+    },
+    CLASS_THUNDER_SHAMAN: {
+        "hp": 28, "str": 8,  "mag": 14, "skl": 11, "spd": 11, "lck": 7, "def": 8,  "res": 12,
+        "move": 7, "weapons": [WEAPON_STAFF, WEAPON_YARI],
+        "color": (255, 240, 80), "symbol": "TS",
+        "mounted": True,
+        "description": "Storms the battlefield on horseback calling down lightning. Mobile magic that can counter with spear."
+    },
+    CLASS_BLOOD_ASCETIC: {
+        "hp": 34, "str": 5,  "mag": 15, "skl": 10, "spd": 9,  "lck": 4, "def": 6,  "res": 10,
+        "move": 4, "weapons": [WEAPON_STAFF, WEAPON_TANTO],
+        "color": (160, 20, 20), "symbol": "BA",
+        "description": "Self-mortifying sorcerer who converts own HP into devastating magic blasts. High risk, high reward."
+    },
+    CLASS_MOON_RIDER: {
+        "hp": 24, "str": 10, "mag": 13, "skl": 13, "spd": 15, "lck": 11,"def": 7,  "res": 13,
+        "move": 8, "weapons": [WEAPON_NAGINATA, WEAPON_STAFF],
+        "color": (180, 180, 255), "symbol": "MR",
+        "flying": True,
+        "description": "Rides a silver-furred celestial steed through the night sky. Balances magic and naginata in equal measure."
+    },
+    CLASS_PHANTOM_KNIGHT: {
+        "hp": 30, "str": 12, "mag": 12, "skl": 11, "spd": 10, "lck": 6, "def": 10, "res": 11,
+        "move": 7, "weapons": [WEAPON_KATANA, WEAPON_STAFF],
+        "color": (80, 80, 120), "symbol": "PK",
+        "mounted": True,
+        "description": "Cursed samurai bound by dark spirit contract. Equally dangerous with blade or with magic. Eerie and relentless."
+    },
+    CLASS_STAR_DANCER: {
+        "hp": 20, "str": 5,  "mag": 17, "skl": 14, "spd": 17, "lck": 13,"def": 4,  "res": 15,
+        "move": 9, "weapons": [WEAPON_STAFF, WEAPON_TANTO],
+        "color": (255, 240, 120), "symbol": "StD",
+        "flying": True,
+        "description": "Celestial spell-weaver who soars on starlight. Fastest magical unit in the game. Pure offensive caster."
+    },
+    CLASS_DEATH_ORACLE: {
+        "hp": 16, "str": 1,  "mag": 22, "skl": 16, "spd": 7,  "lck": 3, "def": 1,  "res": 13,
+        "move": 4, "weapons": [WEAPON_STAFF],
+        "color": (40, 0, 40), "symbol": "DO",
+        "description": "Master of forbidden death arts. Absolute highest MAG in the game. Will die from a single strong hit."
     },
 }
 
