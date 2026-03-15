@@ -72,6 +72,10 @@ class Unit:
         self.x = 0
         self.y = 0
 
+        # Promotion flags
+        self.is_promoted        = unit_class in PROMOTED_CLASSES
+        self.promotion_available= False   # Set True when lv10+ reached; promotion is OPTIONAL
+
         # State flags
         self.has_moved = False
         self.has_acted = False
@@ -185,7 +189,39 @@ class Unit:
             self.exp -= 100
             self._level_up()
             leveled = True
+            # Once lv10+ is reached, mark promotion as available (optional — player chooses via stat screen)
+            if (self.level >= PROMOTION_LEVEL and not self.is_promoted
+                    and self.unit_class in PROMOTION_CHAINS):
+                self.promotion_available = True
         return leveled
+
+    def promote(self, new_class):
+        """Promote this unit to new_class (called from stat sheet). Applies bonuses and updates class data."""
+        if new_class not in PROMOTION_CHAINS.get(self.unit_class, []):
+            return False   # invalid promotion choice
+        bonuses = PROMOTION_BONUSES.get(new_class, {})
+        self.unit_class          = new_class
+        self.is_promoted         = True
+        self.promotion_available = False
+        # Apply stat bonuses
+        self.max_hp += bonuses.get("hp",  0); self.hp = min(self.hp + bonuses.get("hp", 0), self.max_hp)
+        self.str_   += bonuses.get("str", 0)
+        self.mag    += bonuses.get("mag", 0)
+        self.skl    += bonuses.get("skl", 0)
+        self.spd    += bonuses.get("spd", 0)
+        self.lck    += bonuses.get("lck", 0)
+        self.def_   += bonuses.get("def", 0)
+        self.res    += bonuses.get("res", 0)
+        # Reload class data
+        cd = CLASS_DATA[new_class]
+        self.symbol          = cd["symbol"]
+        self.color           = cd["color"]
+        self.move            = cd["move"] + bonuses.get("move", 0)
+        self.allowed_weapons = cd["weapons"]
+        self.is_flying       = cd.get("flying",    False) or new_class in FLYING_CLASSES
+        self.is_mounted      = cd.get("mounted",   False) or new_class in MOUNTED_CLASSES
+        self.water_walk      = cd.get("water_walk",False) or new_class in WATER_CLASSES
+        return True
 
     def _level_up(self):
         self.level += 1
@@ -1098,5 +1134,570 @@ def create_unit_roster():
            4, ["iron_yari"], (90,50,140))
     _named("shimazu_archer","Shimazu Archer", CLASS_EAGLE_ARCHER, FACTION_ENEMY,
            5, ["steel_bow"], (100,60,150))
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # MULTI-BOSS ENEMY OFFICERS (for historically accurate multi-commander chapters)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    units["hidemitsu"] = Unit(
+        "hidemitsu", "Akechi Hidemitsu", CLASS_CAVALRY, FACTION_ENEMY, level=7,
+        weapon_ids=["steel_yari","steel_katana"],
+        portrait_color=(70, 70, 140),
+        archetype=ARCHETYPE_LOYAL,
+        bio=("Mitsuhide's nephew and most devoted sub-commander. He led the\n"
+             "encirclement force at Honnoji and pursued the Oda survivors\n"
+             "with ruthless efficiency. Loyal to his uncle to the very end."),
+        quote="My uncle's will is absolute. His enemies have no tomorrow.",
+        growth_rates={"hp":60,"str":60,"mag":15,"skl":55,"spd":60,"lck":40,"def":55,"res":25}
+    )
+
+    units["mitsuyoshi"] = Unit(
+        "mitsuyoshi", "Akechi Mitsuyoshi", CLASS_SAMURAI, FACTION_ENEMY, level=7,
+        weapon_ids=["steel_katana","iron_nodachi"],
+        portrait_color=(90, 90, 160),
+        archetype=ARCHETYPE_HOTHEAD,
+        bio=("Mitsuhide's son. Inherited his father's precision with a sword\n"
+             "but not his patience. He died at Yamazaki trying to cover\n"
+             "his father's retreat — cut down before he could reach safety."),
+        quote="For the Akechi name — we fight, even if we fall!",
+        growth_rates={"hp":55,"str":60,"mag":15,"skl":70,"spd":65,"lck":40,"def":50,"res":25}
+    )
+
+    units["muneharu"] = Unit(
+        "muneharu", "Shimizu Muneharu", CLASS_GENERAL, FACTION_ENEMY, level=8,
+        weapon_ids=["nihongo","steel_tetsubo"],
+        portrait_color=(80, 100, 140),
+        archetype=ARCHETYPE_LOYAL,
+        bio=("The commander of Takamatsu Castle — a man of extraordinary loyalty.\n"
+             "When the castle was flooded and all hope lost, he chose to sacrifice\n"
+             "himself by ritual suicide so his garrison could live. His courage\n"
+             "was acknowledged even by Hideyoshi."),
+        quote="My men may live. That is enough. My life is a small price.",
+        growth_rates={"hp":70,"str":60,"mag":10,"skl":55,"spd":35,"lck":50,"def":80,"res":30}
+    )
+
+    units["miyabe"] = Unit(
+        "miyabe", "Miyabe Keijun", CLASS_TACTICIAN, FACTION_ENEMY, level=7,
+        weapon_ids=["kanbei_scroll","iron_tanto"],
+        portrait_color=(90, 70, 110),
+        archetype=ARCHETYPE_STRATEGIST,
+        bio=("Mitsuhide's chief military strategist at Honnoji — the planner\n"
+             "behind the encirclement. He managed the political aftermath\n"
+             "of the coup before Hideyoshi's lightning march changed everything."),
+        quote="We planned for every contingency. Every one except Hideyoshi's speed.",
+        growth_rates={"hp":40,"str":25,"mag":70,"skl":65,"spd":55,"lck":55,"def":30,"res":65}
+    )
+
+    units["katsuyori"] = Unit(
+        "katsuyori", "Takeda Katsuyori", CLASS_CAVALRY, FACTION_ENEMY, level=10,
+        weapon_ids=["silver_yari","steel_katana"],
+        portrait_color=(170, 50, 50),
+        archetype=ARCHETYPE_HOTHEAD,
+        bio=("Shingen's heir — brave, bold, and tragically reckless.\n"
+             "At Nagashino, he ordered his legendary cavalry into the Oda volley\n"
+             "fire against all advice. He was not his father. He died for it."),
+        quote="Takeda cavalry has never been stopped! CHARGE! CHARGE! CHARGE!",
+        is_lord=True,
+        growth_rates={"hp":65,"str":70,"mag":20,"skl":60,"spd":65,"lck":40,"def":60,"res":25}
+    )
+
+    units["narimasa"] = Unit(
+        "narimasa", "Sassa Narimasa", CLASS_BERSERKER, FACTION_ENEMY, level=8,
+        weapon_ids=["steel_tetsubo","steel_katana"],
+        portrait_color=(170, 80, 50),
+        archetype=ARCHETYPE_HOTHEAD,
+        bio=("One of Katsuie's most aggressive generals — a berserk warrior\n"
+             "who was once banned from Nobunaga's presence for excessive violence\n"
+             "even by Nobunaga's standards. That is quite the achievement."),
+        quote="Banned from Nobunaga's court for being too violent? I take that as a compliment.",
+        growth_rates={"hp":75,"str":70,"mag":5,"skl":45,"spd":50,"lck":30,"def":65,"res":15}
+    )
+
+    units["matahachi"] = Unit(
+        "matahachi", "Siege Commander Matahachi", CLASS_SPEARMAN, FACTION_ENEMY, level=6,
+        weapon_ids=["steel_yari","iron_naginata"],
+        portrait_color=(100, 80, 140),
+        archetype=ARCHETYPE_LOYAL,
+        bio=("A fictional but archetypal siege officer — the man Mitsunari\n"
+             "entrusts with holding the critical gates of Osaka Castle.\n"
+             "Experienced, cautious, and very hard to dislodge."),
+        quote="These walls do not fall while I breathe.",
+        growth_rates={"hp":60,"str":55,"mag":10,"skl":55,"spd":45,"lck":40,"def":60,"res":25}
+    )
+
+    units["okita_clan"] = Unit(
+        "okita_clan", "Ōkita of the Mori", CLASS_WYVERN_KNIGHT, FACTION_ENEMY, level=8,
+        weapon_ids=["steel_yari","iron_katana"],
+        portrait_color=(50, 110, 70),
+        archetype=ARCHETYPE_LOYAL,
+        bio=("A Mori flying officer who patrols the sea approaches to Takamatsu\n"
+             "Castle. When the castle floods, he flies desperate supply runs\n"
+             "low over the water. A devoted and dangerous opponent."),
+        quote="The Mori endure. I endure. Fly on!",
+        growth_rates={"hp":60,"str":60,"mag":5,"skl":55,"spd":55,"lck":35,"def":60,"res":20}
+    )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # NAMED UNITS FOR NEW MAGICAL PROMOTED CLASSES (12)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    units["okuni"] = Unit(
+        "okuni", "Izumo no Okuni", CLASS_SPIRIT_DANCER, FACTION_PLAYER, level=8,
+        weapon_ids=["flying_naginata","heal_staff"],
+        portrait_color=(180, 230, 255),
+        archetype=ARCHETYPE_FREE,
+        bio=("The founder of Kabuki theater — Okuni turned her sacred shrine dances\n"
+             "into a new art form that swept Japan. In battle, her movements channel\n"
+             "wind kami into blasts that scatter enemy formations."),
+        quote="Watch me dance. Then watch your soldiers run.",
+        can_recruit=True, recruit_by=["hideyoshi", "any"],
+        growth_rates={"hp":35,"str":20,"mag":75,"skl":65,"spd":80,"lck":70,"def":20,"res":70}
+    )
+
+    units["tamamo"] = Unit(
+        "tamamo", "Tamamo-no-Mae", CLASS_KITSUNE_SAGE, FACTION_ENEMY, level=11,
+        weapon_ids=["onmyou_orb","windcutter"],
+        portrait_color=(255, 210, 140),
+        archetype=ARCHETYPE_MYSTIC,
+        bio=("The nine-tailed fox spirit in the guise of a peerless beauty.\n"
+             "She has served emperors and shoguns across centuries.\n"
+             "Her illusions are indistinguishable from reality."),
+        quote="Which of these is real? Are you even certain you are?",
+        growth_rates={"hp":30,"str":15,"mag":90,"skl":70,"spd":70,"lck":80,"def":15,"res":80}
+    )
+
+    units["tenkai"] = Unit(
+        "tenkai", "Tenkai", CLASS_VOID_PROPHET, FACTION_ENEMY, level=10,
+        weapon_ids=["onmyou_orb","shakujo"],
+        portrait_color=(60, 20, 80),
+        archetype=ARCHETYPE_MYSTIC,
+        bio=("The Black-Robed Advisor — Ieyasu's mysterious monk counsellor.\n"
+             "Rumored to be the reincarnation of Akechi Mitsuhide, Tenkai weaves\n"
+             "dark spiritual curses that no warrior can simply cut through."),
+        quote="Darkness is not the absence of light. It is the presence of truth.",
+        can_recruit=True, recruit_by=["ieyasu", "any"],
+        growth_rates={"hp":40,"str":10,"mag":85,"skl":65,"spd":50,"lck":40,"def":25,"res":75}
+    )
+
+    units["chigusa"] = Unit(
+        "chigusa", "Lady Chigusa", CLASS_SHRINE_ORACLE, FACTION_ALLY, level=8,
+        weapon_ids=["amulet_staff","heal_staff"],
+        portrait_color=(255, 240, 200),
+        archetype=ARCHETYPE_NOBLE,
+        bio=("Chief shrine maiden of Atsuta Shrine — the very shrine whose divine favor\n"
+             "Nobunaga invoked before Okehazama. Lady Chigusa has tended sacred flame\n"
+             "for forty years and seen every warlord bow at her threshold."),
+        quote="I do not pray for victory. I pray for you to be worth the gods' attention.",
+        growth_rates={"hp":45,"str":15,"mag":75,"skl":65,"spd":55,"lck":75,"def":25,"res":80}
+    )
+
+    units["sessai"] = Unit(
+        "sessai", "Taigen Sessai", CLASS_CELESTIAL_MONK, FACTION_ENEMY, level=10,
+        weapon_ids=["shakujo","iron_naginata"],
+        portrait_color=(230, 220, 255),
+        archetype=ARCHETYPE_STRATEGIST,
+        bio=("The brilliant monk-general of the Imagawa — strategist, diplomat,\n"
+             "and healer in one. He guided Yoshimoto's campaigns with serene\n"
+             "precision. Even enemies respected his wisdom."),
+        quote="I carry the sutras in one hand and a naginata in the other. Both serve the same purpose.",
+        can_recruit=True, recruit_by=["nobunaga", "any"],
+        growth_rates={"hp":55,"str":40,"mag":70,"skl":65,"spd":55,"lck":60,"def":50,"res":70}
+    )
+
+    units["jade_oracle"] = Unit(
+        "jade_oracle", "Omiwa the Jade Oracle", CLASS_JADE_SORCERESS, FACTION_ENEMY, level=12,
+        weapon_ids=["onmyou_orb","kanbei_scroll"],
+        portrait_color=(140, 220, 160),
+        archetype=ARCHETYPE_MYSTIC,
+        bio=("A reclusive sorceress who channels the spirit of the jade dragon.\n"
+             "She answers to no lord and destroys armies that trespass on her mountain.\n"
+             "Her magic can shatter castle gates."),
+        quote="You came to MY mountain. I did not invite you.",
+        growth_rates={"hp":30,"str":10,"mag":95,"skl":75,"spd":55,"lck":45,"def":10,"res":70}
+    )
+
+    units["raijin_shaman"] = Unit(
+        "raijin_shaman", "Fujibayashi Nagato", CLASS_THUNDER_SHAMAN, FACTION_ENEMY, level=9,
+        weapon_ids=["ofuda","steel_yari"],
+        portrait_color=(255, 240, 80),
+        archetype=ARCHETYPE_HOTHEAD,
+        bio=("A warrior-mystic who calls lightning from storm clouds on horseback.\n"
+             "He claims Raijin, god of thunder, speaks directly into his ear.\n"
+             "The claim is not entirely unconvincing on a battlefield."),
+        quote="Thunder first. Lightning second. You third.",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":55,"str":45,"mag":70,"skl":55,"spd":60,"lck":40,"def":50,"res":60}
+    )
+
+    units["zogan"] = Unit(
+        "zogan", "Zogan the Martyr", CLASS_BLOOD_ASCETIC, FACTION_ENEMY, level=10,
+        weapon_ids=["shakujo","kunai"],
+        portrait_color=(160, 20, 20),
+        archetype=ARCHETYPE_MYSTIC,
+        bio=("Fanatical Ikko-Ikki ascetic who has mastered self-mortification to\n"
+             "convert agony into spiritual destructive force. He welcomes wounds.\n"
+             "The more he bleeds, the more terrible his power becomes."),
+        quote="Pain is just karma leaving the body. And taking yours with it.",
+        growth_rates={"hp":60,"str":25,"mag":75,"skl":50,"spd":50,"lck":25,"def":35,"res":55}
+    )
+
+    units["tsukikage"] = Unit(
+        "tsukikage", "Lady Tsukikage", CLASS_MOON_RIDER, FACTION_ALLY, level=8,
+        weapon_ids=["flying_naginata","heal_staff"],
+        portrait_color=(180, 180, 255),
+        archetype=ARCHETYPE_MYSTIC,
+        bio=("A celestial guardian who rides a moon-pale steed through the night sky.\n"
+             "Her naginata shimmers like moonlight, and her healing songs calm\n"
+             "even the most berserk warriors mid-battle."),
+        quote="The moon watches every battle. She sent me to even the odds.",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":45,"str":50,"mag":65,"skl":65,"spd":70,"lck":60,"def":40,"res":65}
+    )
+
+    units["kagemusha"] = Unit(
+        "kagemusha", "Kagemusha of the Dark Pass", CLASS_PHANTOM_KNIGHT, FACTION_ENEMY, level=9,
+        weapon_ids=["muramasa","kanbei_scroll"],
+        portrait_color=(80, 80, 120),
+        archetype=ARCHETYPE_RIVAL,
+        bio=("A cursed samurai bound by dark spirit contract who serves whichever\n"
+             "warlord currently holds his sealed blade. Neither fully alive nor dead,\n"
+             "he fights with a calm that only the beyond-caring possess."),
+        quote="I have died before. It was quieter than this.",
+        growth_rates={"hp":55,"str":60,"mag":55,"skl":55,"spd":55,"lck":25,"def":55,"res":50}
+    )
+
+    units["uzume"] = Unit(
+        "uzume", "Ama no Uzume", CLASS_STAR_DANCER, FACTION_ALLY, level=10,
+        weapon_ids=["windcutter","heal_staff"],
+        portrait_color=(255, 240, 120),
+        archetype=ARCHETYPE_MYSTIC,
+        bio=("The divine dancer who once lured Amaterasu from the cave,\n"
+             "restoring sunlight to the world. Now manifest in the age of war,\n"
+             "Uzume soars on starlight, turning the tide with celestial magic."),
+        quote="I danced for a sun goddess once. Your army is considerably less impressive.",
+        growth_rates={"hp":35,"str":25,"mag":85,"skl":70,"spd":85,"lck":75,"def":20,"res":70}
+    )
+
+    units["seimei_heir"] = Unit(
+        "seimei_heir", "The Heir of Seimei", CLASS_DEATH_ORACLE, FACTION_ENEMY, level=14,
+        weapon_ids=["onmyou_orb","kanbei_scroll"],
+        portrait_color=(40, 0, 40),
+        archetype=ARCHETYPE_MYSTIC,
+        bio=("Descendant of Abe no Seimei, the greatest onmyoji who ever lived.\n"
+             "This heir has surpassed even their ancestor — mastering the forbidden\n"
+             "arts that can unmake a soul. A late-game boss of terrible power."),
+        quote="Seimei saw fate in the stars. I write it.",
+        growth_rates={"hp":30,"str":10,"mag":100,"skl":80,"spd":45,"lck":20,"def":10,"res":70}
+    )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # NAMED UNITS FOR NEW UNPROMOTED CLASSES (15)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    units["koito"] = Unit(
+        "koito", "Shirabyoshi Koito", CLASS_SHIRABYOSHI, FACTION_PLAYER, level=5,
+        weapon_ids=["kunai"],
+        portrait_color=(255, 180, 200),
+        archetype=ARCHETYPE_FREE,
+        bio=("A wandering sacred dancer who joins the Oda cause after Nobunaga\n"
+             "spares her shrine from burning. Her ritual dances channel kami\n"
+             "energy into her allies, granting them renewed strength."),
+        quote="Dance with me — or watch me dance. Either way, you'll feel better.",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":35,"str":20,"mag":55,"skl":55,"spd":75,"lck":80,"def":15,"res":60}
+    )
+
+    units["yuken"] = Unit(
+        "yuken", "Yuken the Yamabushi", CLASS_YAMABUSHI, FACTION_ENEMY, level=7,
+        weapon_ids=["steel_naginata","ofuda"],
+        portrait_color=(120, 80, 40),
+        archetype=ARCHETYPE_HOTHEAD,
+        bio=("A mountain ascetic warrior who has meditated at Kurama for twenty years.\n"
+             "His naginata technique is formidable; his fire-walking rituals have\n"
+             "given him an unnerving immunity to ordinary fear."),
+        quote="The mountain taught me patience. I spent it all getting here.",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":60,"str":55,"mag":45,"skl":55,"spd":45,"lck":40,"def":55,"res":50}
+    )
+
+    units["hana_miko"] = Unit(
+        "hana_miko", "Hana the Miko", CLASS_MIKO, FACTION_ALLY, level=5,
+        weapon_ids=["heal_staff","iron_bow"],
+        portrait_color=(255, 220, 220),
+        archetype=ARCHETYPE_NOBLE,
+        bio=("A shrine maiden of Ise Jingu, the most sacred shrine in Japan.\n"
+             "Her prayers can turn aside arrows, and her spirit-blessed bow\n"
+             "strikes truer than most trained archers' shots."),
+        quote="The gods do not guarantee victory. They guarantee I will try.",
+        growth_rates={"hp":40,"str":25,"mag":65,"skl":60,"spd":55,"lck":70,"def":20,"res":70}
+    )
+
+    units["kasai"] = Unit(
+        "kasai", "Kasai the Nomad", CLASS_NOMAD, FACTION_ENEMY, level=6,
+        weapon_ids=["iron_bow","iron_tanto"],
+        portrait_color=(180, 160, 100),
+        archetype=ARCHETYPE_FREE,
+        bio=("A horse-archer from the northern steppe who rides for whoever pays\n"
+             "well. His arrows can split a coin at a hundred yards and he never\n"
+             "sleeps on the same patch of ground twice."),
+        quote="I don't fight for lords. I fight for the wind at my back.",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":45,"str":50,"mag":10,"skl":70,"spd":70,"lck":55,"def":35,"res":20}
+    )
+
+    units["ishida_guard"] = Unit(
+        "ishida_guard", "Ishida's Iron Guard", CLASS_FOOT_GUARD, FACTION_ENEMY, level=7,
+        weapon_ids=["steel_yari","steel_tetsubo"],
+        portrait_color=(160, 160, 140),
+        archetype=ARCHETYPE_LOYAL,
+        bio=("One of Ishida Mitsunari's elite castle garrison guards.\n"
+             "Immovable in defense, they have held fortress gates against forces\n"
+             "ten times their number. They do not retreat."),
+        quote="This gate does not open. Not for you. Not for anyone.",
+        growth_rates={"hp":70,"str":50,"mag":5,"skl":45,"spd":30,"lck":30,"def":75,"res":30}
+    )
+
+    units["dohei"] = Unit(
+        "dohei", "Dohei the Merchant", CLASS_MERCHANT, FACTION_ALLY, level=4,
+        weapon_ids=["iron_tanto","iron_bow"],
+        portrait_color=(200, 170, 100),
+        archetype=ARCHETYPE_STRATEGIST,
+        bio=("A cunning merchant-soldier who profits from every campaign.\n"
+             "He carries extra supplies, trades weapons mid-battle, and always\n"
+             "knows where the nearest cache of iron is buried."),
+        quote="War is terrible. Terrible for most people. Excellent for me.",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":40,"str":35,"mag":25,"skl":55,"spd":55,"lck":65,"def":30,"res":40}
+    )
+
+    units["kuro_musha"] = Unit(
+        "kuro_musha", "Kuro the Wandering Warrior", CLASS_MUSHA, FACTION_ENEMY, level=6,
+        weapon_ids=["steel_katana","iron_yari"],
+        portrait_color=(120, 100, 80),
+        archetype=ARCHETYPE_FREE,
+        bio=("A masterless wandering warrior who fights for whoever has the most\n"
+             "interesting battle ahead. No clan owns him. No lord commands him.\n"
+             "He fights because it's what he does best."),
+        quote="I've fought for a dozen lords. You might be worth a thirteenth.",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":55,"str":60,"mag":10,"skl":60,"spd":55,"lck":50,"def":50,"res":20}
+    )
+
+    units["gennosuke"] = Unit(
+        "gennosuke", "Gennosuke the Yojimbo", CLASS_YOJIMBO, FACTION_ENEMY, level=7,
+        weapon_ids=["steel_katana","steel_nodachi"],
+        portrait_color=(80, 80, 60),
+        archetype=ARCHETYPE_LOYAL,
+        bio=("A legendary bodyguard known across three provinces.\n"
+             "He has defended his current lord through seventeen assassination\n"
+             "attempts. He charges a great deal. He is worth it."),
+        quote="You want past me? That'll cost you more than money.",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":60,"str":60,"mag":10,"skl":65,"spd":55,"lck":45,"def":60,"res":20}
+    )
+
+    units["mizuki"] = Unit(
+        "mizuki", "Mizuki the Water Witch", CLASS_WATER_WITCH, FACTION_ALLY, level=6,
+        weapon_ids=["ofuda","heal_staff"],
+        portrait_color=(100, 160, 220),
+        archetype=ARCHETYPE_MYSTIC,
+        bio=("A water-spirit medium who walks barefoot on river banks and\n"
+             "communes with the water kami. Her ice-cold magic flash-freezes\n"
+             "enemy formations and heals allies with cool, purifying waters."),
+        quote="The river knows everything. It just takes a moment to listen.",
+        growth_rates={"hp":38,"str":10,"mag":75,"skl":60,"spd":55,"lck":65,"def":20,"res":75}
+    )
+
+    units["kagero_fire"] = Unit(
+        "kagero_fire", "Kagero the Fire Acolyte", CLASS_FIRE_ACOLYTE, FACTION_ENEMY, level=6,
+        weapon_ids=["ofuda","tanegashima"],
+        portrait_color=(220, 100, 40),
+        archetype=ARCHETYPE_HOTHEAD,
+        bio=("A fire-cult acolyte who combines mystical flame-calling with the\n"
+             "Oda's new tanegashima rifles. The result is a walking conflagration\n"
+             "that even veteran warriors prefer to avoid."),
+        quote="Everything burns eventually. I just help it along.",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":45,"str":20,"mag":70,"skl":55,"spd":50,"lck":40,"def":25,"res":60}
+    )
+
+    units["musashibou"] = Unit(
+        "musashibou", "Musashibou Benkei", CLASS_BLADE_MONK, FACTION_ENEMY, level=9,
+        weapon_ids=["steel_katana","iron_naginata"],
+        portrait_color=(160, 100, 60),
+        archetype=ARCHETYPE_HOTHEAD,
+        bio=("The legendary warrior-monk of Gojo Bridge. He collected 999 swords\n"
+             "from defeated samurai; the 1000th led to his downfall and greatest\n"
+             "loyalty. A historical legend appearing as an enemy boss."),
+        quote="Nine hundred ninety-nine swords I took. You will be one more.",
+        growth_rates={"hp":70,"str":65,"mag":35,"skl":65,"spd":50,"lck":45,"def":60,"res":50}
+    )
+
+    units["gorozo"] = Unit(
+        "gorozo", "Gorozo the Rogue", CLASS_ROGUE, FACTION_PLAYER, level=4,
+        weapon_ids=["kunai","iron_chain"],
+        portrait_color=(60, 50, 40),
+        archetype=ARCHETYPE_FREE,
+        bio=("An outlaw-thief who joins the Oda on a dare and never quite leaves.\n"
+             "He claims to be able to open any lock and steal anything not nailed\n"
+             "down — and some things that are."),
+        quote="I'm not a spy. Spies have ideology. I just enjoy this sort of thing.",
+        can_recruit=True, recruit_by=["goemon", "any"],
+        growth_rates={"hp":40,"str":45,"mag":20,"skl":75,"spd":75,"lck":70,"def":25,"res":30}
+    )
+
+    units["kanemitsu"] = Unit(
+        "kanemitsu", "Lord Kanemitsu", CLASS_COURT_NOBLE, FACTION_ENEMY, level=7,
+        weapon_ids=["kanbei_scroll","iron_katana"],
+        portrait_color=(200, 190, 160),
+        archetype=ARCHETYPE_NOBLE,
+        bio=("A Kyoto court noble who commands through political maneuvering\n"
+             "as much as military skill. His network of informants and debts\n"
+             "called in makes him dangerous even without drawing a sword."),
+        quote="War is simply politics conducted by louder means.",
+        can_recruit=True, recruit_by=["nobunaga", "any"],
+        growth_rates={"hp":40,"str":35,"mag":60,"skl":55,"spd":50,"lck":65,"def":30,"res":60}
+    )
+
+    units["umio"] = Unit(
+        "umio", "Umio the Sea Soldier", CLASS_SEA_SOLDIER, FACTION_ENEMY, level=5,
+        weapon_ids=["iron_katana","steel_yari"],
+        portrait_color=(60, 80, 140),
+        archetype=ARCHETYPE_HOTHEAD,
+        bio=("A grizzled naval foot soldier who has fought in every sea battle\n"
+             "from Kyushu to the Japan Sea. Equally at home on a rocking deck\n"
+             "or a rain-soaked beach."),
+        quote="Land, sea, river — they're all the same to me. Wet and full of enemies.",
+        can_recruit=True, recruit_by=["motochika", "any"],
+        growth_rates={"hp":60,"str":55,"mag":5,"skl":50,"spd":50,"lck":45,"def":55,"res":25}
+    )
+
+    units["young_takeda"] = Unit(
+        "young_takeda", "Young Takeda Retainer", CLASS_KENIN, FACTION_ENEMY, level=3,
+        weapon_ids=["iron_katana"],
+        portrait_color=(140, 160, 190),
+        archetype=ARCHETYPE_LOYAL,
+        bio=("A young Takeda clan retainer, barely old enough to hold his sword\n"
+             "properly but burning with loyalty to the Tiger of Kai.\n"
+             "Raw potential waiting to be forged."),
+        quote="I'll prove myself! Lord Shingen will see!",
+        can_recruit=True, recruit_by=["any"],
+        growth_rates={"hp":55,"str":55,"mag":15,"skl":60,"spd":55,"lck":55,"def":45,"res":25}
+    )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # NAMED UNITS FOR NEW PROMOTED CLASSES (4)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    units["musashi"] = Unit(
+        "musashi", "Miyamoto Musashi", CLASS_SWORD_SAINT, FACTION_ALLY, level=10,
+        weapon_ids=["dojikiri","muramasa"],
+        portrait_color=(220, 60, 60),
+        archetype=ARCHETYPE_HERO,
+        bio=("Japan's greatest swordsman — undefeated in over sixty duels.\n"
+             "He appears on the battlefield like a legend made flesh,\n"
+             "his two-sword style incomprehensible to any opponent."),
+        quote="There is nothing outside of yourself that can ever enable you to get better. Everything is within.",
+        growth_rates={"hp":55,"str":80,"mag":10,"skl":95,"spd":80,"lck":50,"def":50,"res":20}
+    )
+
+    units["matsu"] = Unit(
+        "matsu", "Matsu (Lady Maeda)", CLASS_VALKYRIE, FACTION_ALLY, level=8,
+        weapon_ids=["physic_staff","silver_bow"],
+        portrait_color=(240, 200, 240),
+        archetype=ARCHETYPE_NOBLE,
+        bio=("Wife of Maeda Toshiie, the legendary Lady Maeda who once faced down\n"
+             "Tokugawa's retainers alone in her garden with a naginata. Now she rides\n"
+             "into battle as healer and protector of the Maeda cause."),
+        quote="My husband charges forward. I make sure there's still someone to come home to.",
+        growth_rates={"hp":45,"str":25,"mag":80,"skl":65,"spd":65,"lck":75,"def":35,"res":80}
+    )
+
+    units["shimazu_great_gen"] = Unit(
+        "shimazu_great_gen", "Shimazu Great General", CLASS_GREAT_GENERAL, FACTION_ENEMY, level=12,
+        weapon_ids=["nihongo","oni_tetsubo"],
+        portrait_color=(210, 210, 220),
+        archetype=ARCHETYPE_LOYAL,
+        bio=("The supreme armored commander of the Shimazu western army.\n"
+             "His armor has stopped fifteen arrows and three cannon balls.\n"
+             "He considers this a slow morning."),
+        quote="Come. I have armor for all occasions. Including this one.",
+        growth_rates={"hp":80,"str":65,"mag":10,"skl":50,"spd":25,"lck":35,"def":90,"res":40}
+    )
+
+    units["imagawa_warlord"] = Unit(
+        "imagawa_warlord", "Imagawa Battle-Commander", CLASS_WARLORD, FACTION_ENEMY, level=10,
+        weapon_ids=["steel_tetsubo","odenta_mitsu"],
+        portrait_color=(220, 50, 30),
+        archetype=ARCHETYPE_HOTHEAD,
+        bio=("The military strongarm of the Imagawa army — all brute power and\n"
+             "battlefield intimidation. Hideyoshi once said this man was the\n"
+             "only enemy who ever actually made him run."),
+        quote="FORWARD! SMASH EVERYTHING! WORRY LATER!",
+        growth_rates={"hp":80,"str":80,"mag":15,"skl":50,"spd":50,"lck":30,"def":70,"res":20}
+    )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PROMOTED GENERIC ENEMY UNITS for Chapters 13-20
+    # ══════════════════════════════════════════════════════════════════════════
+    # pe_ prefix = promoted enemy, for use in late chapters
+
+    _generic("pe_ron1",  "Elite Ronin",      CLASS_RONIN,         FACTION_ENEMY, 10, ["silver_katana","steel_nodachi"],  (110,20,20))
+    _generic("pe_ron2",  "Master Ronin",     CLASS_RONIN,         FACTION_ENEMY, 13, ["dojikiri","muramasa"],            (100,10,10))
+    _generic("pe_gen1",  "Iron General",     CLASS_GENERAL,       FACTION_ENEMY, 11, ["silver_yari","steel_tetsubo"],    (130,130,130))
+    _generic("pe_gen2",  "Great General",    CLASS_GREAT_GENERAL, FACTION_ENEMY, 12, ["nihongo","oni_tetsubo"],          (205,205,215))
+    _generic("pe_hat1",  "Elite Hatamoto",   CLASS_HATAMOTO,      FACTION_ENEMY, 11, ["silver_katana","jumonji_yari"],   (150,90,50))
+    _generic("pe_hat2",  "Grand Hatamoto",   CLASS_HATAMOTO,      FACTION_ENEMY, 14, ["dojikiri","silver_yari"],         (140,80,40))
+    _generic("pe_gk1",   "Great Knight",     CLASS_GREAT_KNIGHT,  FACTION_ENEMY, 11, ["silver_katana","jumonji_yari"],   (120,120,160))
+    _generic("pe_gk2",   "Iron Great Knight",CLASS_GREAT_KNIGHT,  FACTION_ENEMY, 13, ["dojikiri","silver_yari"],         (110,110,150))
+    _generic("pe_nc1",   "Lord's Cavalry",   CLASS_NOBLE_CAVALRY, FACTION_ENEMY, 11, ["silver_katana","silver_yari"],    (205,185,70))
+    _generic("pe_nc2",   "Grand Cavalry",    CLASS_NOBLE_CAVALRY, FACTION_ENEMY, 13, ["dojikiri","nihongo"],             (195,175,60))
+    _generic("pe_fk1",   "Falcon Knight",    CLASS_FALCON_KNIGHT, FACTION_ENEMY, 11, ["silver_naginata","mend_staff"],   (200,180,255))
+    _generic("pe_fk2",   "Sky Falcon",       CLASS_FALCON_KNIGHT, FACTION_ENEMY, 13, ["flying_naginata","physic_staff"], (190,170,245))
+    _generic("pe_dk1",   "Dragon Knight",    CLASS_DRAGON_KNIGHT, FACTION_ENEMY, 12, ["silver_yari","dojikiri"],         (185,65,20))
+    _generic("pe_dk2",   "War Dragon",       CLASS_DRAGON_KNIGHT, FACTION_ENEMY, 15, ["bishamonten","honjo_masamune"],   (175,55,10))
+    _generic("pe_sr1",   "Storm Rider",      CLASS_STORM_RIDER,   FACTION_ENEMY, 11, ["windcutter","steel_katana"],      (140,190,255))
+    _generic("pe_sr2",   "Sky Assassin",     CLASS_STORM_RIDER,   FACTION_ENEMY, 14, ["windcutter","muramasa"],          (130,180,245))
+    _generic("pe_sl1",   "Sky Lancer",       CLASS_SKY_LANCER,    FACTION_ENEMY, 11, ["silver_yari","iron_naginata"],    (160,100,45))
+    _generic("pe_sl2",   "Iron Sky Lancer",  CLASS_SKY_LANCER,    FACTION_ENEMY, 13, ["nihongo","flying_naginata"],      (150,90,35))
+    _generic("pe_lc1",   "Elite Cavalry",    CLASS_LANCE_CAVALRY, FACTION_ENEMY, 10, ["silver_yari","steel_naginata"],   (195,115,40))
+    _generic("pe_lc2",   "Lance Master",     CLASS_LANCE_CAVALRY, FACTION_ENEMY, 12, ["nihongo","silver_naginata"],      (185,105,30))
+    _generic("pe_wl1",   "Warlord",          CLASS_WARLORD,       FACTION_ENEMY, 11, ["oni_tetsubo","steel_nodachi"],    (215,45,25))
+    _generic("pe_wl2",   "Battle Warlord",   CLASS_WARLORD,       FACTION_ENEMY, 14, ["oni_tetsubo","fuujin_nodachi"],   (205,35,15))
+    _generic("pe_gg1",   "Great General",    CLASS_GREAT_GENERAL, FACTION_ENEMY, 13, ["nihongo","oni_tetsubo"],          (200,200,210))
+    _generic("pe_tm1",   "Tengu Master",     CLASS_TENGU_MASTER,  FACTION_ENEMY, 10, ["windcutter","onmyou_orb"],        (85,45,145))
+    _generic("pe_ea1",   "Eagle Archer",     CLASS_EAGLE_ARCHER,  FACTION_ENEMY, 10, ["silver_bow","yumi_anti_air"],     (160,210,140))
+    _generic("pe_sp1",   "Void Prophet",     CLASS_VOID_PROPHET,  FACTION_ENEMY, 10, ["onmyou_orb"],                    (55,15,75))
+    _generic("pe_jd1",   "Jade Sorceress",   CLASS_JADE_SORCERESS,FACTION_ENEMY, 11, ["onmyou_orb","kanbei_scroll"],    (130,215,155))
+    _generic("pe_ph1",   "Phantom Knight",   CLASS_PHANTOM_KNIGHT,FACTION_ENEMY, 10, ["muramasa","onmyou_orb"],         (75,75,115))
+    _generic("pe_we1",   "War Elephant",     CLASS_WAR_ELEPHANT,  FACTION_ENEMY, 11, ["steel_tetsubo","steel_yari"],    (85,65,50))
+
+    # New class generic enemies (unpromoted, for variety in mid-game)
+    _generic("e_yam1",  "Yamabushi",         CLASS_YAMABUSHI,     FACTION_ENEMY, 4,  ["iron_naginata","ofuda"],         (110,70,35))
+    _generic("e_yam2",  "Elder Yamabushi",   CLASS_YAMABUSHI,     FACTION_ENEMY, 7,  ["steel_naginata","shakujo"],      (100,60,25))
+    _generic("e_miko1", "Shrine Maiden",     CLASS_MIKO,          FACTION_ENEMY, 3,  ["heal_staff","iron_bow"],         (255,210,210))
+    _generic("e_nom1",  "Nomad Rider",       CLASS_NOMAD,         FACTION_ENEMY, 4,  ["iron_bow","iron_tanto"],         (170,150,90))
+    _generic("e_nom2",  "Nomad Scout",       CLASS_NOMAD,         FACTION_ENEMY, 6,  ["steel_bow","iron_tanto"],        (160,140,80))
+    _generic("e_fgd1",  "Foot Guard",        CLASS_FOOT_GUARD,    FACTION_ENEMY, 4,  ["iron_yari","iron_tetsubo"],      (150,150,130))
+    _generic("e_fgd2",  "Iron Foot Guard",   CLASS_FOOT_GUARD,    FACTION_ENEMY, 7,  ["steel_yari","steel_tetsubo"],    (140,140,120))
+    _generic("e_mush1", "Wandering Musha",   CLASS_MUSHA,         FACTION_ENEMY, 4,  ["iron_katana","iron_yari"],       (110,90,70))
+    _generic("e_mush2", "Veteran Musha",     CLASS_MUSHA,         FACTION_ENEMY, 7,  ["steel_katana","steel_yari"],     (100,80,60))
+    _generic("e_yoji1", "Yojimbo",           CLASS_YOJIMBO,       FACTION_ENEMY, 5,  ["steel_katana"],                  (75,75,55))
+    _generic("e_yoji2", "Master Yojimbo",    CLASS_YOJIMBO,       FACTION_ENEMY, 8,  ["steel_katana","steel_nodachi"],  (65,65,45))
+    _generic("e_rogue1","Outlaw",            CLASS_ROGUE,         FACTION_ENEMY, 3,  ["iron_tanto","iron_chain"],       (55,45,35))
+    _generic("e_rogue2","Bandit Rogue",      CLASS_ROGUE,         FACTION_ENEMY, 5,  ["steel_tanto","iron_chain"],      (45,35,25))
+    _generic("e_kenin1","Young Retainer",    CLASS_KENIN,         FACTION_ENEMY, 1,  ["iron_katana"],                   (130,150,180))
+    _generic("e_kenin2","Retainer",          CLASS_KENIN,         FACTION_ENEMY, 3,  ["iron_katana"],                   (120,140,170))
+    _generic("e_ssol1", "Sea Soldier",       CLASS_SEA_SOLDIER,   FACTION_ENEMY, 4,  ["iron_katana","iron_yari"],       (50,70,130))
+    _generic("e_ssol2", "Sea Veteran",       CLASS_SEA_SOLDIER,   FACTION_ENEMY, 6,  ["steel_katana","steel_yari"],     (40,60,120))
+    _generic("e_blm1",  "Blade Monk",        CLASS_BLADE_MONK,    FACTION_ENEMY, 4,  ["iron_katana","iron_naginata"],   (150,90,50))
+    _generic("e_blm2",  "Sword Monk",        CLASS_BLADE_MONK,    FACTION_ENEMY, 7,  ["steel_katana","steel_naginata"], (140,80,40))
+
+    # Player-side generics for new classes
+    _generic("oda_yam1",  "Oda Yamabushi",   CLASS_YAMABUSHI,     FACTION_PLAYER, 3, ["iron_naginata","ofuda"],         (110,70,35))
+    _generic("oda_miko1", "Oda Miko",        CLASS_MIKO,          FACTION_PLAYER, 3, ["heal_staff","iron_bow"],         (255,210,210))
+    _generic("oda_mush1", "Oda Musha",       CLASS_MUSHA,         FACTION_PLAYER, 3, ["iron_katana","iron_yari"],       (110,90,70))
+    _generic("oda_fgd1",  "Oda Foot Guard",  CLASS_FOOT_GUARD,    FACTION_PLAYER, 3, ["iron_yari","iron_tetsubo"],      (150,150,130))
+    _generic("oda_blm1",  "Oda Blade Monk",  CLASS_BLADE_MONK,    FACTION_PLAYER, 3, ["iron_katana","iron_naginata"],   (150,90,50))
 
     return units
