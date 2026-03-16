@@ -217,23 +217,36 @@ def make_chapter3_map():
 
 # ─── MAP 4: Honnoji Temple ────────────────────────────────────────────────────
 def make_chapter4_map():
+    # 18 columns x 14 rows
+    # Kyoto city grid — Honnoji Temple compound at center-north
+    # Streets form a true grid (road tiles); outer districts have residences
+    # (village tiles) and merchant buildings (ruins/castle tiles)
+    # Temple: walled compound (castle tiles) with moat-ditch (river) on N side
+    # Four gates: N outer gate (row 1), W/E wall gates (row 4/5), S inner gate
+    # Defensive towers (fort) at compound corners; main hall = seize objective
+    # Mitsuhide's troops approach from S, E, W simultaneously
     tiles = [
-        [P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P],
-        [P, F, P, P, C, C, C, C, C, C, C, C, P, P, F, P],
-        [P, P, P, C, C, T, D, D, D, T, C, C, C, P, P, P],
-        [P, P, P, C, D, D, P, P, P, D, D, C, P, P, P, P],
-        [P, P, C, C, D, P, P, C, P, P, D, C, C, P, P, P],
-        [P, P, C, D, P, P, C, C, C, P, P, D, C, P, P, P],
-        [P, P, C, D, P, C, C, C, C, C, P, D, C, P, P, P],
-        [P, P, C, D, P, P, C, C, C, P, P, D, C, P, P, P],
-        [P, P, C, C, D, P, P, P, P, P, D, C, C, P, P, P],
-        [P, P, P, C, D, D, P, P, P, D, D, C, P, P, P, P],
-        [P, F, P, C, C, T, D, D, D, T, C, C, C, P, F, P],
-        [P, P, P, P, C, C, C, C, C, C, C, C, P, P, P, P],
+        #0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17
+        [D,  U,  D,  U,  U,  D,  U,  D,  D,  U,  D,  U,  U,  D,  U,  U,  D,  U],  # 0  N city blocks
+        [D,  V,  D,  U,  P,  D,  P,  G,  G,  P,  D,  P,  U,  D,  P,  V,  D,  U],  # 1  N outer gate + residences
+        [D,  P,  D,  P,  P,  D,  R,  R,  R,  R,  D,  P,  P,  D,  P,  P,  D,  U],  # 2  moat/ditch N of temple
+        [D,  U,  D,  U,  C,  C,  C,  T,  T,  C,  C,  C,  U,  D,  U,  U,  D,  U],  # 3  temple outer N wall + towers
+        [D,  D,  D,  G,  C,  D,  D,  D,  D,  D,  D,  C,  G,  D,  D,  D,  D,  D],  # 4  W gate — inner road — E gate
+        [D,  U,  D,  C,  C,  D,  C,  C,  C,  C,  D,  C,  C,  D,  U,  U,  D,  U],  # 5  temple inner N approach
+        [D,  P,  D,  C,  D,  D,  C,  T,  C,  T,  D,  D,  C,  D,  P,  P,  D,  U],  # 6  inner ward — shrine bldgs
+        [D,  U,  D,  C,  D,  C,  C,  C,  C,  C,  C,  D,  C,  D,  U,  U,  D,  U],  # 7  main hall corridor
+        [D,  P,  D,  C,  D,  C,  T,  C,  C,  C,  T,  C,  C,  D,  P,  P,  D,  U],  # 8  main hall (seize) + flanks
+        [D,  U,  D,  C,  D,  C,  C,  C,  C,  C,  C,  D,  C,  D,  U,  U,  D,  U],  # 9  inner ward S
+        [D,  D,  D,  G,  C,  D,  D,  D,  D,  D,  D,  C,  G,  D,  D,  D,  D,  D],  # 10 S gate — inner road — E gate
+        [D,  P,  D,  U,  C,  C,  C,  T,  T,  C,  C,  C,  U,  D,  P,  P,  D,  U],  # 11 temple outer S wall + towers
+        [D,  V,  D,  U,  P,  D,  P,  G,  G,  P,  D,  P,  U,  D,  P,  V,  D,  U],  # 12 S outer gate + residences
+        [D,  P,  D,  U,  U,  D,  U,  D,  D,  U,  D,  U,  U,  D,  U,  P,  D,  U],  # 13 S city blocks / entry
     ]
-    gmap = GameMap(16, 12, tiles, name="Honnoji Temple")
-    gmap.seize_points = [(7,6)]
-    gmap.fort_points  = [(5,2),(9,2),(5,10),(9,10)]
+    gmap = GameMap(18, 14, tiles, name="Honnoji Temple — Night of Flames")
+    gmap.seize_points   = [(7, 8), (8, 8)]                      # main hall inner sanctum
+    gmap.village_points = [(1, 1), (15, 1), (1, 12), (15, 12)]  # residential districts
+    gmap.fort_points    = [(7, 3), (9, 3), (6, 6), (9, 6), (6, 8), (9, 8), (7, 11), (9, 11)]
+    gmap.gate_points    = [(7, 1), (8, 1), (3, 4), (12, 4), (3, 10), (12, 10), (7, 12), (8, 12)]
     return gmap
 
 
@@ -504,28 +517,38 @@ def make_chapter15_map():
 
 # ─── MAP 16: Siege of Odawara Castle ─────────────────────────────────────────
 def make_chapter16_map():
+    # 20 columns x 18 rows
+    # Peninsula: sea on east (cols 15-19), mountains on west (cols 0-1)
+    # Narrow land approach from south (rows 15-17)
+    # THREE concentric castle rings with moat (river) between outer & middle
+    # Outermost wall row 4/row 13; middle wall row 6/row 11; inner keep row 8
+    # Town area between outer and middle rings; central keep top-center
     tiles = [
-        [S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S],
-        [S, S, S, P, P, P, P, P, P, P, P, P, P, P, P, S, S, S, S, S],
-        [S, S, P, P, C, C, C, C, C, C, C, C, C, C, P, P, S, S, S, S],
-        [S, P, P, C, C, T, D, G, D, D, G, D, T, C, C, P, P, S, S, S],
-        [S, P, C, C, T, P, P, P, P, P, P, P, P, T, C, C, P, S, S, S],
-        [S, P, C, D, P, P, P, P, P, P, P, P, P, P, D, C, P, S, S, S],
-        [S, P, C, D, P, P, C, C, C, C, C, C, P, P, D, C, P, S, S, S],
-        [S, P, C, D, P, C, C, T, D, D, T, C, C, P, D, C, P, S, S, S],
-        [S, P, C, D, P, C, D, D, C, C, D, D, C, P, D, C, P, S, S, S],
-        [S, P, C, D, P, C, C, T, D, D, T, C, C, P, D, C, P, S, S, S],
-        [S, P, C, D, P, P, C, C, C, C, C, C, P, P, D, C, P, S, S, S],
-        [S, P, C, D, P, P, P, P, P, P, P, P, P, P, D, C, P, S, S, S],
-        [S, P, C, C, T, P, P, P, P, P, P, P, P, T, C, C, P, S, S, S],
-        [S, P, P, C, C, T, D, G, D, D, G, D, T, C, C, P, P, S, S, S],
-        [S, S, P, P, C, C, C, C, C, C, C, C, C, C, P, P, S, S, S, S],
-        [S, S, S, P, P, P, P, P, P, P, P, P, P, P, P, S, S, S, S, S],
+        #0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
+        [M,  M,  K,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  S,  S,  S,  S,  S,  S,  S],  # 0  keep + sea N
+        [M,  M,  M,  C,  T,  D,  D,  C,  C,  C,  D,  D,  T,  C,  S,  S,  S,  S,  S,  S],  # 1  inner keep top
+        [M,  M,  F,  C,  D,  P,  P,  C,  C,  C,  P,  P,  D,  C,  S,  S,  S,  S,  S,  S],  # 2  keep interior
+        [M,  F,  F,  C,  D,  P,  P,  T,  C,  T,  P,  P,  D,  C,  S,  S,  S,  S,  S,  S],  # 3  keep inner ward
+        [M,  F,  P,  G,  R,  R,  R,  R,  R,  R,  R,  R,  R,  G,  S,  S,  S,  S,  S,  S],  # 4  inner moat + W gate
+        [M,  F,  P,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  S,  S,  S,  S,  S,  S],  # 5  middle wall N
+        [M,  P,  P,  C,  V,  D,  D,  G,  D,  G,  D,  D,  V,  C,  S,  S,  S,  S,  S,  S],  # 6  middle N gate + town
+        [M,  P,  P,  C,  D,  V,  P,  P,  P,  P,  P,  V,  D,  C,  S,  S,  S,  S,  S,  S],  # 7  town district
+        [M,  P,  P,  C,  D,  P,  V,  U,  U,  U,  V,  P,  D,  C,  S,  S,  S,  S,  S,  S],  # 8  town interior
+        [M,  P,  P,  C,  D,  V,  P,  P,  P,  P,  P,  V,  D,  C,  S,  S,  S,  S,  S,  S],  # 9  town district
+        [M,  P,  P,  C,  V,  D,  D,  G,  D,  G,  D,  D,  V,  C,  S,  S,  S,  S,  S,  S],  # 10 middle S gate + town
+        [M,  F,  P,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  S,  S,  S,  S,  S,  S],  # 11 middle wall S
+        [M,  F,  P,  R,  R,  R,  R,  R,  R,  R,  R,  R,  R,  R,  S,  S,  S,  S,  S,  S],  # 12 outer moat (river)
+        [M,  F,  B,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  B,  S,  S,  S,  S,  S,  S],  # 13 moat bridges
+        [M,  M,  C,  C,  C,  G,  D,  D,  D,  D,  D,  G,  C,  C,  S,  S,  S,  S,  S,  S],  # 14 outer wall + S gate
+        [M,  M,  F,  P,  P,  P,  D,  P,  P,  P,  D,  P,  P,  F,  P,  P,  S,  S,  S,  S],  # 15 southern approach
+        [M,  M,  M,  F,  P,  P,  D,  P,  T,  T,  D,  P,  P,  F,  P,  P,  P,  S,  S,  S],  # 16 Hideyoshi siege camps
+        [M,  M,  M,  M,  F,  F,  D,  F,  F,  F,  D,  F,  F,  M,  P,  P,  P,  P,  S,  S],  # 17 S forest entry
     ]
-    gmap = GameMap(20, 16, tiles, name="Odawara Castle")
-    gmap.seize_points   = [(8,8),(9,8)]
-    gmap.gate_points    = [(7,3),(10,3),(7,13),(10,13)]
-    gmap.fort_points    = [(5,3),(11,3),(5,12),(11,12),(7,7),(10,7),(7,9),(10,9)]
+    gmap = GameMap(20, 18, tiles, name="Odawara Castle — The Grand Siege")
+    gmap.seize_points   = [(7, 2), (8, 2), (9, 2)]      # inner keep / main tower
+    gmap.gate_points    = [(3, 4), (7, 6), (9, 6), (7, 10), (9, 10), (5, 14), (11, 14)]
+    gmap.fort_points    = [(7, 3), (9, 3), (8, 16), (9, 16)]
+    gmap.village_points = [(4, 6), (12, 6), (5, 7), (11, 7), (5, 9), (11, 9), (4, 10), (12, 10)]
     return gmap
 
 
@@ -555,27 +578,38 @@ def make_chapter17_map():
 
 # ─── MAP 18: Full Battle of Sekigahara ───────────────────────────────────────
 def make_chapter18_map():
+    # 24 columns x 16 rows
+    # Twin mountain ranges N (rows 0-2) and S (rows 13-15) form a valley
+    # Eastern Army (Tokugawa) camps on right (cols 18-23)
+    # Western Army (Ishida) camps on left (cols 0-5)
+    # Nakasendo road runs east-west through center row 8
+    # Strategic hills: fort tiles at mid-valley positions
+    # Kobayakawa's hill: SE corner (cols 18-22, rows 11-14) — marked with fort
+    # Rivers cut through north-center (chokepoints)
+    # Villages as objective points scattered across valley
     tiles = [
-        [M, M, M, M, F, F, P, P, P, P, P, P, F, F, M, M, M, M, M, M, M, M],
-        [M, M, M, F, F, P, P, V, P, P, V, P, P, F, F, M, M, M, M, M, M, M],
-        [M, M, F, F, P, P, P, P, P, P, P, P, P, P, F, F, M, M, M, M, M, M],
-        [M, F, F, P, P, P, T, P, P, T, P, P, T, P, P, F, F, M, M, M, M, M],
-        [F, F, P, P, P, P, P, P, P, P, P, P, P, P, P, P, F, F, M, M, M, M],
-        [F, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, F, M, M, M, M],
-        [P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, F, M, M, M],
-        [P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, F, M, M],
-        [P, P, P, P, P, D, D, D, D, D, D, D, D, D, P, P, P, P, P, P, F, F],
-        [P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, F, M, M],
-        [P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, F, M, M, M],
-        [F, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, P, F, M, M, M, M],
-        [F, F, P, P, P, T, P, P, T, P, P, T, P, P, P, P, F, F, M, M, M, M],
-        [M, F, F, P, P, P, P, P, P, P, P, P, P, P, P, F, F, M, M, M, M, M],
-        [M, M, F, F, P, V, P, P, P, P, P, V, P, P, F, F, M, M, M, M, M, M],
+        #0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23
+        [M,  M,  M,  M,  M,  F,  F,  F,  F,  F,  F,  F,  F,  F,  F,  F,  M,  M,  M,  M,  M,  M,  M,  M],  # 0  N mountain ridge
+        [M,  M,  M,  F,  F,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  F,  F,  M,  M,  M,  M,  K,  K,  M],  # 1  N slopes
+        [M,  M,  F,  F,  P,  P,  V,  P,  R,  R,  P,  V,  P,  P,  P,  P,  F,  F,  M,  T,  T,  M,  M,  M],  # 2  N valley + river source + E camp
+        [M,  F,  F,  P,  P,  P,  P,  P,  R,  P,  P,  P,  P,  P,  P,  P,  P,  F,  P,  P,  P,  F,  M,  M],  # 3  river flows S
+        [F,  F,  T,  P,  P,  P,  P,  P,  B,  P,  P,  P,  P,  P,  T,  P,  P,  P,  P,  P,  P,  P,  F,  M],  # 4  W fort + bridge + E position
+        [F,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  F],  # 5  open valley
+        [P,  P,  P,  P,  V,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  V,  P,  P,  P,  P,  P,  P,  P,  P],  # 6  valley villages
+        [P,  P,  P,  P,  P,  P,  P,  F,  P,  P,  P,  P,  F,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P],  # 7  scattered forest
+        [D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D,  D],  # 8  Nakasendo road full width
+        [P,  P,  P,  P,  P,  P,  P,  F,  P,  P,  P,  P,  F,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P],  # 9  scattered forest
+        [P,  P,  P,  P,  V,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  V,  P,  P,  P,  P,  P,  P,  P,  P],  # 10 valley villages
+        [F,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  F,  F,  T,  T,  P,  P],  # 11 S valley + Kobayakawa hill begin
+        [F,  F,  T,  P,  P,  P,  P,  P,  B,  P,  P,  P,  P,  P,  T,  P,  P,  F,  F,  T,  T,  F,  P,  P],  # 12 S fort + bridge + Kobayakawa hill
+        [M,  F,  F,  P,  P,  P,  P,  P,  R,  P,  P,  P,  P,  P,  P,  P,  F,  F,  M,  F,  T,  F,  M,  M],  # 13 S river + Kobayakawa crest
+        [M,  M,  F,  F,  P,  P,  V,  P,  R,  R,  P,  V,  P,  P,  P,  F,  F,  M,  M,  M,  F,  M,  M,  M],  # 14 S slopes + village
+        [M,  M,  M,  M,  M,  F,  F,  F,  F,  F,  F,  F,  F,  F,  F,  F,  M,  M,  M,  M,  M,  M,  M,  M],  # 15 S mountain ridge
     ]
-    gmap = GameMap(22, 15, tiles, name="Sekigahara — The Great Battle")
-    gmap.seize_points   = [(10,7),(11,7)]
-    gmap.village_points = [(7,1),(10,1),(5,14),(11,14)]
-    gmap.fort_points    = [(6,3),(9,3),(12,3),(5,12),(8,12),(11,12)]
+    gmap = GameMap(24, 16, tiles, name="Sekigahara — The Decisive Battle")
+    gmap.seize_points   = [(11, 8), (12, 8)]            # Nakasendo center / battle pivot
+    gmap.village_points = [(6, 2), (11, 2), (4, 6), (15, 6), (4, 10), (15, 10), (6, 14), (11, 14)]
+    gmap.fort_points    = [(2, 4), (14, 4), (2, 12), (14, 12), (19, 2), (20, 2), (20, 11), (21, 11), (19, 12), (20, 13)]
     return gmap
 
 

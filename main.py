@@ -17,6 +17,7 @@ Keyboard:          Touch/Mouse:
   S: Skip tutorial
 """
 import sys
+import asyncio
 import pygame
 from game.constants import *
 from game.state      import GameState
@@ -66,7 +67,7 @@ def _build_tutorial_chapter(gs):
     for u in gs.all_units(): u.reset_turn()
 
 
-def main():
+async def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Sengoku Tactics: Age of the Warring States")
@@ -166,21 +167,41 @@ def main():
         # ── Title screen ─────────────────────────────────────────────────────
         if gs.state == STATE_TITLE:
             if action == "confirm":
-                gs._mode_cursor = 0
+                gs._mode_cursor   = 0
+                gs._deploy_cursor = 0
+                gs._mode_row      = 0
                 gs.state = STATE_MODE_SELECT
             return
 
         # ── Mode select screen ────────────────────────────────────────────────
         if gs.state == STATE_MODE_SELECT:
+            active_row = getattr(gs, '_mode_row', 0)
             if action == "left":
-                gs._mode_cursor = 0
+                if active_row == 0: gs._mode_cursor   = 0
+                else:               gs._deploy_cursor  = 0
             elif action == "right":
-                gs._mode_cursor = 1
+                if active_row == 0: gs._mode_cursor   = 1
+                else:               gs._deploy_cursor  = 1
+            elif action == "up":
+                gs._mode_row = 0
+            elif action == "down":
+                gs._mode_row = 1
             elif action == "confirm":
-                gs.classic_mode = (gs._mode_cursor == 0)
-                start_tutorial()
+                gs.classic_mode  = (getattr(gs, '_mode_cursor', 0) == 0)
+                gs.deploy_mode   = DEPLOY_FREE if getattr(gs, '_deploy_cursor', 0) == 1 else DEPLOY_FORCED
+                gs.prologue_idx  = 0
+                gs.state         = STATE_PROLOGUE
             elif action == "cancel":
                 gs.state = STATE_TITLE
+            return
+
+        # ── Prologue ──────────────────────────────────────────────────────────
+        if gs.state == STATE_PROLOGUE:
+            from game.prologue import PROLOGUE_SLIDES
+            if action in ("confirm", "any_key", "cancel"):
+                gs.prologue_idx = getattr(gs, 'prologue_idx', 0) + 1
+                if gs.prologue_idx >= len(PROLOGUE_SLIDES):
+                    start_tutorial()
             return
 
         # ── Pre-battle scene dialog ───────────────────────────────────────────
@@ -398,7 +419,6 @@ def main():
             if unit and unit.faction==FACTION_PLAYER and not unit.has_acted:
                 tgts = gs.get_healable_targets(unit)
                 if tgts:
-                    nonlocal heal_targets, heal_cursor, showing_heal_sel
                     heal_targets = tgts; heal_cursor = 0
                     gs.cursor_x=tgts[0].x; gs.cursor_y=tgts[0].y
                     showing_heal_sel = True
@@ -417,7 +437,6 @@ def main():
             if unit and unit.faction==FACTION_PLAYER and not unit.has_acted:
                 recruitable = gs.get_recruitable_adjacent(unit)
                 if recruitable:
-                    nonlocal recruit_target, showing_recruit
                     recruit_target = recruitable[0]
                     showing_recruit= True
                     gs.cursor_mode = CURSOR_TALK
@@ -493,17 +512,31 @@ def main():
                 if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
                     btn_action = touch.handle_mouse_down(mx,my)
                     if btn_action:
-                        do_action(btn_action)
+                        if btn_action == "zoom_in":
+                            renderer.zoom_in()
+                            if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
+                        elif btn_action == "zoom_out":
+                            renderer.zoom_out()
+                            if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
+                        elif btn_action == "help":
+                            showing_help = not showing_help
+                        else:
+                            do_action(btn_action)
                     else:
                         handle_map_click(mx,my)
                 elif gs.state == STATE_TITLE:
                     do_action("confirm")
                 elif gs.state == STATE_MODE_SELECT:
-                    # Tap left half = Classic, right half = Casual, then confirm
-                    if mx < SCREEN_WIDTH // 2:
-                        gs._mode_cursor = 0
+                    # Tap: top half = difficulty row, bottom half = deploy row
+                    cy_mid = SCREEN_HEIGHT // 2
+                    if my < cy_mid:
+                        gs._mode_row = 0
+                        gs._mode_cursor = 0 if mx < SCREEN_WIDTH // 2 else 1
                     else:
-                        gs._mode_cursor = 1
+                        gs._mode_row = 1
+                        gs._deploy_cursor = 0 if mx < SCREEN_WIDTH // 2 else 1
+                    do_action("confirm")
+                elif gs.state == STATE_PROLOGUE:
                     do_action("confirm")
                 elif gs.state == STATE_SCENE:
                     do_action("confirm")
@@ -517,8 +550,47 @@ def main():
                 elif gs.state in (STATE_VICTORY, STATE_GAME_OVER):
                     do_action("confirm")
 
+            elif event.type == pygame.MOUSEMOTION:
+                # Drag-to-scroll the map
+                if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
+                    if pygame.mouse.get_pressed()[0]:
+                        is_drag = touch.handle_mouse_motion(*event.pos)
+                        if is_drag and gs.game_map:
+                            dx, dy = touch.drag_cam_delta
+                            if dx != 0 or dy != 0:
+                                renderer.cam_x += dx
+                                renderer.cam_y += dy
+                                renderer.clamp_camera(gs.game_map)
+
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                touch.handle_mouse_up(*event.pos)
+                was_drag = touch.handle_mouse_up(*event.pos)
+                # If it was a drag, suppress the tile-click that would normally follow
+
+            # ── Pinch zoom (finger events — mobile browsers/touchscreens) ─────
+            elif event.type == pygame.FINGERDOWN:
+                touch.handle_finger_down(event.finger_id, event.x, event.y,
+                                         SCREEN_WIDTH, SCREEN_HEIGHT)
+            elif event.type == pygame.FINGERMOTION:
+                zdelta = touch.handle_finger_motion(event.finger_id, event.x, event.y,
+                                                    SCREEN_WIDTH, SCREEN_HEIGHT)
+                if zdelta > 0:
+                    renderer.zoom_in()
+                    if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
+                elif zdelta < 0:
+                    renderer.zoom_out()
+                    if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
+            elif event.type == pygame.FINGERUP:
+                touch.handle_finger_up(event.finger_id)
+
+            # ── Mouse wheel zoom ──────────────────────────────────────────────
+            elif event.type == pygame.MOUSEWHEEL:
+                if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
+                    if event.y > 0:
+                        renderer.zoom_in()
+                    elif event.y < 0:
+                        renderer.zoom_out()
+                    if gs.game_map:
+                        renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
 
             # ── Keyboard input ────────────────────────────────────────────────
             elif event.type == pygame.KEYDOWN:
@@ -527,27 +599,34 @@ def main():
                 # ── Title ─────────────────────────────────────────────────────
                 if gs.state == STATE_TITLE:
                     if key in (pygame.K_RETURN, pygame.K_z):
-                        # Go to mode selection before starting
-                        gs._mode_cursor = 0  # default Classic
+                        gs._mode_cursor    = 0
+                        gs._deploy_cursor  = 0
+                        gs._mode_row       = 0
                         gs.state = STATE_MODE_SELECT
                     elif key == pygame.K_s:
-                        # Skip tutorial shortcut — still pick mode first
-                        gs._mode_cursor = 0
+                        gs._mode_cursor    = 0
+                        gs._deploy_cursor  = 0
+                        gs._mode_row       = 0
                         gs.state = STATE_MODE_SELECT
                     elif key == pygame.K_ESCAPE:
                         running = False
 
                 # ── Mode Select ───────────────────────────────────────────────
                 elif gs.state == STATE_MODE_SELECT:
-                    if key in (pygame.K_LEFT, pygame.K_a):
-                        gs._mode_cursor = 0
-                    elif key in (pygame.K_RIGHT, pygame.K_d):
-                        gs._mode_cursor = 1
+                    if key in (pygame.K_LEFT,  pygame.K_a): do_action("left")
+                    elif key in (pygame.K_RIGHT, pygame.K_d): do_action("right")
+                    elif key in (pygame.K_UP,   pygame.K_w): do_action("up")
+                    elif key in (pygame.K_DOWN, pygame.K_s): do_action("down")
                     elif key in (pygame.K_RETURN, pygame.K_z, pygame.K_SPACE):
-                        gs.classic_mode = (gs._mode_cursor == 0)
-                        start_tutorial()
+                        do_action("confirm")
                     elif key == pygame.K_ESCAPE:
                         gs.state = STATE_TITLE
+
+                # ── Prologue ──────────────────────────────────────────────────
+                elif gs.state == STATE_PROLOGUE:
+                    if key in (pygame.K_RETURN, pygame.K_z, pygame.K_SPACE,
+                               pygame.K_x, pygame.K_ESCAPE):
+                        do_action("confirm")
 
                 # ── Pre-battle scene dialog ───────────────────────────────────
                 elif gs.state == STATE_SCENE:
@@ -608,6 +687,16 @@ def main():
                                pygame.K_DOWN:"down",pygame.K_s:"down"}
                     if key in dir_map:
                         do_action(dir_map[key]); continue
+
+                    # Zoom keys (+/-)
+                    if key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
+                        renderer.zoom_in()
+                        if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
+                        continue
+                    if key in (pygame.K_MINUS, pygame.K_KP_MINUS):
+                        renderer.zoom_out()
+                        if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
+                        continue
 
                     # Single-key actions
                     act_map = {
@@ -686,6 +775,7 @@ def main():
             touch.render(screen)
 
         pygame.display.flip()
+        await asyncio.sleep(0)   # yield to browser event loop (pygbag requirement)
 
     pygame.quit()
     sys.exit()
@@ -710,4 +800,4 @@ def _render_heal_overlay(screen, font_sm, font_md, targets, cursor):
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

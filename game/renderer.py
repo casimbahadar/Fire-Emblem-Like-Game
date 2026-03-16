@@ -27,6 +27,10 @@ FE_STAT_LABELS = {
 
 
 class Renderer:
+    # Zoom tile-size steps (pixels per tile)
+    _ZOOM_STEPS = [24, 32, 40, 48, 56, 64]
+    _ZOOM_DEFAULT = 3   # index into _ZOOM_STEPS → 48 px (TILE_SIZE)
+
     def __init__(self, screen, font_sm, font_md, font_lg, font_title):
         self.screen     = screen
         self.font_sm    = font_sm
@@ -37,7 +41,32 @@ class Renderer:
         self.map_rect = pygame.Rect(0, 0, SCREEN_WIDTH - UI_PANEL_WIDTH, SCREEN_HEIGHT)
         self.ui_rect  = pygame.Rect(SCREEN_WIDTH - UI_PANEL_WIDTH, 0,
                                     UI_PANEL_WIDTH, SCREEN_HEIGHT)
+        self._zoom_idx = self._ZOOM_DEFAULT
+        self._scaled_tile_cache = {}   # ts → {terrain: surface}
         self._build_terrain_surfaces()
+
+    @property
+    def ts(self):
+        """Current tile size in pixels (zoom-adjusted)."""
+        return self._ZOOM_STEPS[self._zoom_idx]
+
+    def zoom_in(self):
+        if self._zoom_idx < len(self._ZOOM_STEPS) - 1:
+            self._zoom_idx += 1
+
+    def zoom_out(self):
+        if self._zoom_idx > 0:
+            self._zoom_idx -= 1
+
+    def _get_scaled_tile(self, terrain, ts):
+        """Return terrain surface scaled to ts×ts, cached."""
+        if ts not in self._scaled_tile_cache:
+            self._scaled_tile_cache[ts] = {}
+        cache = self._scaled_tile_cache[ts]
+        if terrain not in cache:
+            base = self._tile_surfs.get(terrain, self._tile_surfs[TERRAIN_PLAIN])
+            cache[terrain] = pygame.transform.scale(base, (ts, ts))
+        return cache[terrain]
 
     # ── Terrain tile cache ────────────────────────────────────────────────────
     def _build_terrain_surfaces(self):
@@ -94,16 +123,27 @@ class Renderer:
 
     # ── Camera ────────────────────────────────────────────────────────────────
     def center_camera(self, gmap, cx, cy):
-        vw = self.map_rect.width  // TILE_SIZE
-        vh = self.map_rect.height // TILE_SIZE
+        ts = self.ts
+        vw = self.map_rect.width  // ts
+        vh = self.map_rect.height // ts
         self.cam_x = max(0, min(cx - vw//2, gmap.width  - vw))
         self.cam_y = max(0, min(cy - vh//2, gmap.height - vh))
 
+    def clamp_camera(self, gmap):
+        """Clamp camera without centering (used after drag scroll)."""
+        ts = self.ts
+        vw = self.map_rect.width  // ts
+        vh = self.map_rect.height // ts
+        self.cam_x = max(0, min(self.cam_x, gmap.width  - vw))
+        self.cam_y = max(0, min(self.cam_y, gmap.height - vh))
+
     def tile_to_screen(self, tx, ty):
-        return (tx-self.cam_x)*TILE_SIZE, (ty-self.cam_y)*TILE_SIZE
+        ts = self.ts
+        return (tx-self.cam_x)*ts, (ty-self.cam_y)*ts
 
     def screen_to_tile(self, sx, sy):
-        return sx//TILE_SIZE + self.cam_x, sy//TILE_SIZE + self.cam_y
+        ts = self.ts
+        return sx//ts + self.cam_x, sy//ts + self.cam_y
 
     # ── Top-level render dispatcher ───────────────────────────────────────────
     def render(self, gs, showing_help=False):
@@ -113,6 +153,8 @@ class Renderer:
             self._render_title(gs)
         elif s == STATE_MODE_SELECT:
             self._render_mode_select(gs)
+        elif s == STATE_PROLOGUE:
+            self._render_prologue(gs)
         elif s == STATE_SCENE:
             self._render_scene(gs)
         elif s == STATE_PREP:
@@ -176,8 +218,9 @@ class Renderer:
 
     # ── Mode Select ───────────────────────────────────────────────────────────
     def _render_mode_select(self, gs):
-        """Classic vs Casual difficulty selection screen."""
-        # Background gradient (same as title)
+        """Difficulty + Deploy mode selection screen (two rows)."""
+        from game.constants import DEPLOY_FORCED, DEPLOY_FREE
+        # Background gradient
         for i in range(SCREEN_HEIGHT):
             t = i / SCREEN_HEIGHT
             pygame.draw.line(self.screen,
@@ -186,73 +229,91 @@ class Renderer:
         cx = SCREEN_WIDTH // 2
         cy = SCREEN_HEIGHT // 2
 
-        # Header
-        self._blit_center(self.font_lg.render("Choose Your Mode", True, GOLD), cx, cy - 190)
-        pygame.draw.line(self.screen, GOLD, (cx-300, cy-162), (cx+300, cy-162), 2)
+        # _mode_cursor encodes both rows:
+        # row 0 = difficulty (0=Classic, 1=Casual), row 1 = deploy (0=Forced, 1=Free)
+        # We store them as _mode_cursor (0/1) and _deploy_cursor (0/1)
+        mode_sel   = getattr(gs, '_mode_cursor',   0)
+        deploy_sel = getattr(gs, '_deploy_cursor',  0)
+        active_row = getattr(gs, '_mode_row',       0)   # 0=difficulty row, 1=deploy row
 
-        mode_sel = getattr(gs, '_mode_cursor', 0)  # 0 = Classic, 1 = Casual
+        # ── Header ───────────────────────────────────────────────────────────
+        self._blit_center(self.font_lg.render("Choose Your Mode", True, GOLD), cx, cy - 230)
+        pygame.draw.line(self.screen, GOLD, (cx-300, cy-202), (cx+300, cy-202), 2)
 
-        # ── Classic box ──────────────────────────────────────────────────────
-        classic_border = GOLD if mode_sel == 0 else (80, 80, 80)
-        classic_bg     = (40, 20, 10) if mode_sel == 0 else (20, 20, 20)
-        self._draw_rounded_box(cx - 260, cy - 145, 230, 240, classic_bg, classic_border, r=12)
+        # ── Row 0: Difficulty ─────────────────────────────────────────────────
+        row0_y = cy - 190
 
-        sword = "⚔"
-        self._blit_center(self.font_lg.render(sword, True, (200, 80, 40)), cx - 145, cy - 115)
-        self._blit_center(self.font_md.render("CLASSIC", True, GOLD if mode_sel==0 else LIGHT_GREY),
-                          cx - 145, cy - 75)
-        classic_lines = [
-            "Permanent death.",
-            "Fallen officers",
-            "are gone forever.",
-            "",
-            "Every decision",
-            "carries weight.",
-            "True Bushido.",
-        ]
-        ly = cy - 48
-        for line in classic_lines:
-            col = CREAM if mode_sel == 0 else (120, 120, 120)
-            self._blit_center(self.font_sm.render(line, True, col), cx - 145, ly)
-            ly += 20
+        # Classic
+        classic_border = GOLD if (active_row==0 and mode_sel==0) else (80,80,80)
+        classic_bg     = (40,20,10) if (active_row==0 and mode_sel==0) else (20,20,20)
+        self._draw_rounded_box(cx-260, row0_y, 220, 150, classic_bg, classic_border, r=10)
+        self._blit_center(self.font_md.render("⚔  CLASSIC", True,
+            GOLD if (active_row==0 and mode_sel==0) else LIGHT_GREY), cx-150, row0_y+22)
+        for i, line in enumerate(["Permanent death.", "Fallen officers lost forever.",
+                                   "", "True Bushido."]):
+            col = CREAM if (active_row==0 and mode_sel==0) else (120,120,120)
+            self._blit_center(self.font_sm.render(line, True, col), cx-150, row0_y+50+i*18)
 
-        # ── Casual box ───────────────────────────────────────────────────────
-        casual_border  = GOLD if mode_sel == 1 else (80, 80, 80)
-        casual_bg      = (10, 30, 50) if mode_sel == 1 else (20, 20, 20)
-        self._draw_rounded_box(cx + 30, cy - 145, 230, 240, casual_bg, casual_border, r=12)
+        # Casual
+        casual_border  = GOLD if (active_row==0 and mode_sel==1) else (80,80,80)
+        casual_bg      = (10,30,50) if (active_row==0 and mode_sel==1) else (20,20,20)
+        self._draw_rounded_box(cx+40, row0_y, 220, 150, casual_bg, casual_border, r=10)
+        self._blit_center(self.font_md.render("✿  CASUAL", True,
+            GOLD if (active_row==0 and mode_sel==1) else LIGHT_GREY), cx+150, row0_y+22)
+        for i, line in enumerate(["Units revive next chapter.", "Focus on story",
+                                   "and strategy.", ""]):
+            col = CREAM if (active_row==0 and mode_sel==1) else (120,120,120)
+            self._blit_center(self.font_sm.render(line, True, col), cx+150, row0_y+50+i*18)
 
-        sakura = "✿"
-        self._blit_center(self.font_lg.render(sakura, True, (100, 180, 240)), cx + 145, cy - 115)
-        self._blit_center(self.font_md.render("CASUAL", True, GOLD if mode_sel==1 else LIGHT_GREY),
-                          cx + 145, cy - 75)
-        casual_lines = [
-            "Units revive at",
-            "the start of the",
-            "next chapter.",
-            "",
-            "Focus on story",
-            "and strategy",
-            "without regret.",
-        ]
-        ly = cy - 48
-        for line in casual_lines:
-            col = CREAM if mode_sel == 1 else (120, 120, 120)
-            self._blit_center(self.font_sm.render(line, True, col), cx + 145, ly)
-            ly += 20
+        # Active row 0 indicator arrow
+        if active_row == 0:
+            arr = self.font_md.render("▶", True, GOLD)
+            self.screen.blit(arr, (cx-300, row0_y+55))
 
-        # ── Selection indicator ───────────────────────────────────────────────
-        if mode_sel == 0:
-            label = "CLASSIC selected — deaths are permanent"
-        else:
-            label = "CASUAL selected — fallen units return next chapter"
-        self._blit_center(self.font_md.render(label, True, GOLD), cx, cy + 115)
+        # ── Row 1: Deploy Mode ────────────────────────────────────────────────
+        row1_y = cy - 20
+        pygame.draw.line(self.screen, (80,70,30), (cx-300, row1_y-8), (cx+300, row1_y-8), 1)
+        self._blit_center(self.font_sm.render("DEPLOYMENT MODE", True, (160,140,60)), cx, row1_y-18)
+
+        # Forced
+        forced_border = GOLD if (active_row==1 and deploy_sel==0) else (80,80,80)
+        forced_bg     = (35,15,40) if (active_row==1 and deploy_sel==0) else (20,20,20)
+        self._draw_rounded_box(cx-260, row1_y, 220, 130, forced_bg, forced_border, r=10)
+        self._blit_center(self.font_md.render("FORCED", True,
+            GOLD if (active_row==1 and deploy_sel==0) else LIGHT_GREY), cx-150, row1_y+18)
+        for i, line in enumerate(["Chapter pre-selects", "key story units.",
+                                   "Curated experience."]):
+            col = CREAM if (active_row==1 and deploy_sel==0) else (120,120,120)
+            self._blit_center(self.font_sm.render(line, True, col), cx-150, row1_y+44+i*18)
+
+        # Free
+        free_border = GOLD if (active_row==1 and deploy_sel==1) else (80,80,80)
+        free_bg     = (10,35,20) if (active_row==1 and deploy_sel==1) else (20,20,20)
+        self._draw_rounded_box(cx+40, row1_y, 220, 130, free_bg, free_border, r=10)
+        self._blit_center(self.font_md.render("FREE CHOICE", True,
+            GOLD if (active_row==1 and deploy_sel==1) else LIGHT_GREY), cx+150, row1_y+18)
+        for i, line in enumerate(["Pick any units you", "have unlocked.",
+                                   "Full strategic freedom."]):
+            col = CREAM if (active_row==1 and deploy_sel==1) else (120,120,120)
+            self._blit_center(self.font_sm.render(line, True, col), cx+150, row1_y+44+i*18)
+
+        # Active row 1 indicator arrow
+        if active_row == 1:
+            arr = self.font_md.render("▶", True, GOLD)
+            self.screen.blit(arr, (cx-300, row1_y+50))
+
+        # ── Summary label ─────────────────────────────────────────────────────
+        diff_str   = "Classic" if mode_sel==0 else "Casual"
+        deploy_str = "Forced" if deploy_sel==0 else "Free Choice"
+        label = f"{diff_str}  |  {deploy_str} Deployment"
+        self._blit_center(self.font_md.render(label, True, GOLD), cx, row1_y + 150)
 
         # ── Controls hint ─────────────────────────────────────────────────────
         hints = [
-            "← / → or Left / Right : Switch mode",
-            "Enter / Z / Tap : Confirm",
+            "Up/Down: Switch row   Left/Right: Switch option",
+            "Enter / Z: Confirm all selections",
         ]
-        hy = cy + 150
+        hy = row1_y + 175
         for h in hints:
             self._blit_center(self.font_sm.render(h, True, LIGHT_GREY), cx, hy)
             hy += 22
@@ -386,38 +447,40 @@ class Renderer:
 
     # ── Map ───────────────────────────────────────────────────────────────────
     def _render_map(self, gs):
+        ts = self.ts
         gmap = gs.game_map
         pygame.draw.rect(self.screen,(30,30,30),self.map_rect)
-        vw = self.map_rect.width  // TILE_SIZE + 2
-        vh = self.map_rect.height // TILE_SIZE + 2
+        vw = self.map_rect.width  // ts + 2
+        vh = self.map_rect.height // ts + 2
         for ty in range(self.cam_y, min(self.cam_y+vh, gmap.height)):
             for tx in range(self.cam_x, min(self.cam_x+vw, gmap.width)):
-                t   = gmap.get_terrain(tx, ty)
-                s   = self._tile_surfs.get(t, self._tile_surfs[TERRAIN_PLAIN])
+                t  = gmap.get_terrain(tx, ty)
+                s  = self._get_scaled_tile(t, ts)
                 sx, sy = self.tile_to_screen(tx, ty)
-                self.screen.blit(s, (sx,sy))
+                self.screen.blit(s, (sx, sy))
         pygame.draw.rect(self.screen,DARK_GREY,self.map_rect,2)
 
     # ── Overlays ──────────────────────────────────────────────────────────────
     def _render_overlays(self, gs):
+        ts = self.ts
         def stamp(tx, ty, color, alpha, border=None, border_alpha=200):
             sx, sy = self.tile_to_screen(tx, ty)
-            if not self.map_rect.collidepoint(sx+TILE_SIZE//2, sy+TILE_SIZE//2):
+            if not self.map_rect.collidepoint(sx+ts//2, sy+ts//2):
                 return
-            ov = pygame.Surface((TILE_SIZE,TILE_SIZE), pygame.SRCALPHA)
+            ov = pygame.Surface((ts, ts), pygame.SRCALPHA)
             ov.fill((*color, alpha))
             self.screen.blit(ov,(sx,sy))
             if border:
                 pygame.draw.rect(self.screen,(*border,border_alpha),
-                                 (sx,sy,TILE_SIZE,TILE_SIZE),2)
+                                 (sx,sy,ts,ts),2)
 
         # Seize points
         for (sx,sy) in gs.game_map.seize_points:
             stamp(sx,sy,(200,170,20),90,GOLD,220)
             self.screen.blit(
                 self.font_sm.render("★",True,GOLD),
-                (sx*TILE_SIZE - self.cam_x*TILE_SIZE+2,
-                 sy*TILE_SIZE - self.cam_y*TILE_SIZE+2))
+                (sx*ts - self.cam_x*ts+2,
+                 sy*ts - self.cam_y*ts+2))
 
         if gs.selected_unit:
             for (tx,ty) in getattr(gs,'move_range_land',set()):
@@ -429,23 +492,25 @@ class Renderer:
 
     # ── Units ─────────────────────────────────────────────────────────────────
     def _render_units(self, gs):
+        ts = self.ts
         for unit in gs.all_units():
             if not unit.alive:
                 continue
             sx,sy = self.tile_to_screen(unit.x, unit.y)
-            if not self.map_rect.collidepoint(sx+TILE_SIZE//2, sy+TILE_SIZE//2):
+            if not self.map_rect.collidepoint(sx+ts//2, sy+ts//2):
                 continue
             self._draw_unit(unit, sx, sy, gs)
 
     def _draw_unit(self, unit, sx, sy, gs):
-        cx_ = sx+TILE_SIZE//2; cy_ = sy+TILE_SIZE//2
-        r   = TILE_SIZE//2 - 3
+        ts  = self.ts
+        cx_ = sx+ts//2; cy_ = sy+ts//2
+        r   = max(4, ts//2 - 3)
         color = unit.color
         if unit.has_acted and unit.faction == FACTION_PLAYER:
             color = _darken(color,80)
         # Shadow / flying altitude shadow
         if unit.is_flying:
-            pygame.draw.ellipse(self.screen,_darken(color,80),(sx+4,sy+TILE_SIZE-10,TILE_SIZE-8,8))
+            pygame.draw.ellipse(self.screen,_darken(color,80),(sx+4,sy+ts-10,ts-8,8))
         else:
             pygame.draw.circle(self.screen,_darken(color,50),(cx_+2,cy_+2),r)
         pygame.draw.circle(self.screen,color,(cx_,cy_),r)
@@ -464,27 +529,28 @@ class Renderer:
         self.screen.blit(self.font_sm.render(sym,True,WHITE),
                          self.font_sm.render(sym,True,WHITE).get_rect(center=(cx_,cy_-2)))
         # HP bar
-        bw=TILE_SIZE-8; bh=4; bx=sx+4; by=sy+TILE_SIZE-7
+        bw=ts-8; bh=4; bx=sx+4; by=sy+ts-7
         pct=unit.hp/unit.max_hp
         hc=GREEN if pct>0.5 else YELLOW if pct>0.25 else RED
         pygame.draw.rect(self.screen,DARK_GREY,(bx,by,bw,bh))
         pygame.draw.rect(self.screen,hc,       (bx,by,int(bw*pct),bh))
         # Selected
         if gs.selected_unit==unit:
-            pygame.draw.rect(self.screen,WHITE,(sx+1,sy+1,TILE_SIZE-2,TILE_SIZE-2),2)
+            pygame.draw.rect(self.screen,WHITE,(sx+1,sy+1,ts-2,ts-2),2)
         if unit.is_lord:
-            self.screen.blit(self.font_sm.render("♦",True,GOLD),(sx+TILE_SIZE-14,sy+1))
+            self.screen.blit(self.font_sm.render("♦",True,GOLD),(sx+ts-14,sy+1))
         if unit.can_recruit and not unit.recruited:
-            self.screen.blit(self.font_sm.render("!",True,(50,220,100)),(sx+TILE_SIZE-12,sy+TILE_SIZE-16))
+            self.screen.blit(self.font_sm.render("!",True,(50,220,100)),(sx+ts-12,sy+ts-16))
 
     # ── Cursor ────────────────────────────────────────────────────────────────
     def _render_cursor(self, gs):
+        ts = self.ts
         sx,sy = self.tile_to_screen(gs.cursor_x, gs.cursor_y)
-        if not self.map_rect.collidepoint(sx+TILE_SIZE//2, sy+TILE_SIZE//2):
+        if not self.map_rect.collidepoint(sx+ts//2, sy+ts//2):
             return
         alpha = int(160+80*abs((pygame.time.get_ticks()%1000)/500-1))
-        cs = pygame.Surface((TILE_SIZE,TILE_SIZE),pygame.SRCALPHA)
-        pygame.draw.rect(cs,(255,255,255,min(255,alpha)),(0,0,TILE_SIZE,TILE_SIZE),3)
+        cs = pygame.Surface((ts,ts),pygame.SRCALPHA)
+        pygame.draw.rect(cs,(255,255,255,min(255,alpha)),(0,0,ts,ts),3)
         self.screen.blit(cs,(sx,sy))
 
     # ── UI Panel ──────────────────────────────────────────────────────────────
@@ -518,11 +584,21 @@ class Renderer:
         # Objective
         ch=gs.current_chapter
         if ch:
-            pygame.draw.line(self.screen,GOLD,(x0,p.bottom-280),(p.right-10,p.bottom-280),1)
-            oy=p.bottom-272
+            pygame.draw.line(self.screen,GOLD,(x0,p.bottom-310),(p.right-10,p.bottom-310),1)
+            oy=p.bottom-302
             self.screen.blit(self.font_sm.render("Objective:",True,YELLOW),(x0,oy)); oy+=18
             for w in self._wrap(ch.objective_detail, p.width-20):
                 self.screen.blit(self.font_sm.render(w,True,CREAM),(x0,oy)); oy+=16
+
+            # ── Side objectives ──────────────────────────────────────────────
+            side_objs = getattr(gs, 'active_side_objectives', [])
+            pending_objs = [so for so in side_objs if not so.completed and not so.failed]
+            if pending_objs:
+                pygame.draw.line(self.screen,(80,70,30),(x0,oy),(p.right-10,oy),1); oy+=4
+                self.screen.blit(self.font_sm.render("Side:",True,(180,160,80)),(x0,oy)); oy+=16
+                for so in pending_objs[:3]:
+                    short = so.description[:22] + ("…" if len(so.description)>22 else "")
+                    self.screen.blit(self.font_sm.render(f"▷ {short}",True,(140,200,120)),(x0,oy)); oy+=14
 
         # Controls hint
         pygame.draw.line(self.screen,GOLD,(x0,p.bottom-155),(p.right-10,p.bottom-155),1)
@@ -1332,6 +1408,95 @@ class Renderer:
                 line = w
         if line: lines.append(line)
         return lines
+
+    # ── Prologue ───────────────────────────────────────────────────────────────
+    def _render_prologue(self, gs):
+        """Full-screen historical intro slides before Chapter 1."""
+        from game.prologue import PROLOGUE_SLIDES, PROLOGUE_PORTRAIT_COLORS
+        idx   = getattr(gs, 'prologue_idx', 0)
+        total = len(PROLOGUE_SLIDES)
+        if idx >= total:
+            return
+
+        speaker_key, display_name, text = PROLOGUE_SLIDES[idx]
+        portrait_color = PROLOGUE_PORTRAIT_COLORS.get(speaker_key, (40, 40, 70))
+
+        W, H = SCREEN_WIDTH, SCREEN_HEIGHT
+
+        # ── Background — deep midnight ink wash ──────────────────────────────
+        for i in range(H):
+            t = i / H
+            r = int(5  + t * 15)
+            g = int(5  + t * 12)
+            b = int(15 + t * 35)
+            pygame.draw.line(self.screen, (r, g, b), (0, i), (W, i))
+
+        # ── "PROLOGUE" header ─────────────────────────────────────────────────
+        hdr = self.font_sm.render("PROLOGUE — The Age of the Warring States", True, (140, 120, 60))
+        self.screen.blit(hdr, (20, 14))
+        pygame.draw.line(self.screen, (80, 70, 30), (20, 32), (W - 20, 32), 1)
+
+        # ── Portrait box (left side) ──────────────────────────────────────────
+        pw, ph = 160, 200
+        px, py = 40, H // 2 - ph // 2 - 30
+
+        shadow = pygame.Surface((pw + 6, ph + 6), pygame.SRCALPHA)
+        shadow.fill((0, 0, 0, 120))
+        self.screen.blit(shadow, (px - 2, py + 4))
+
+        pygame.draw.rect(self.screen, portrait_color, (px, py, pw, ph))
+        pygame.draw.rect(self.screen, GOLD, (px, py, pw, ph), 3)
+
+        initial = display_name[0].upper() if display_name else "?"
+        ic = self.font_title.render(initial, True, (255, 255, 255, 180))
+        self.screen.blit(ic, (px + pw // 2 - ic.get_width() // 2,
+                               py + ph // 2 - ic.get_height() // 2))
+
+        # ── Dialogue box (bottom) ─────────────────────────────────────────────
+        box_h = 200
+        box_y = H - box_h - 10
+        box_x = 30
+        box_w = W - 60
+
+        dlg_surf = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+        dlg_surf.fill((8, 10, 28, 225))
+        self.screen.blit(dlg_surf, (box_x, box_y))
+        pygame.draw.rect(self.screen, GOLD, (box_x, box_y, box_w, box_h), 2)
+
+        # Speaker name bar
+        name_bar_h = 30
+        name_bar_surf = pygame.Surface((220, name_bar_h), pygame.SRCALPHA)
+        name_bar_surf.fill((*portrait_color, 230))
+        self.screen.blit(name_bar_surf, (box_x + 10, box_y - name_bar_h + 2))
+        pygame.draw.rect(self.screen, GOLD,
+                         (box_x + 10, box_y - name_bar_h + 2, 220, name_bar_h), 1)
+        name_surf = self.font_md.render(display_name, True, WHITE)
+        self.screen.blit(name_surf, (box_x + 18, box_y - name_bar_h + 6))
+
+        # Dialogue text
+        text_x = box_x + 20
+        text_y = box_y + 18
+        max_chars = (box_w - 40) // 8
+        for wline in self._wrap(text, max_chars)[:6]:
+            self.screen.blit(self.font_md.render(wline, True, CREAM), (text_x, text_y))
+            text_y += 28
+
+        # ── Progress dots ─────────────────────────────────────────────────────
+        dot_y = box_y + box_h - 22
+        dot_start_x = box_x + 20
+        dot_spacing = min(14, (box_w - 60) // max(total, 1))
+        for i in range(total):
+            col = GOLD if i == idx else (80, 70, 40)
+            pygame.draw.circle(self.screen, col,
+                               (dot_start_x + i * dot_spacing, dot_y), 4)
+
+        hint = "Z / Enter / Tap  ▶  to continue"
+        hint_surf = self.font_sm.render(hint, True, (160, 150, 100))
+        self.screen.blit(hint_surf, (W - hint_surf.get_width() - 30, dot_y - 6))
+
+        # ── Slide counter ─────────────────────────────────────────────────────
+        ctr = self.font_sm.render(f"{idx+1} / {total}", True, (120, 110, 70))
+        self.screen.blit(ctr, (W - ctr.get_width() - 20, 14))
 
     def _draw_rounded_box(self, x, y, w, h, fill, border, r=6):
         pygame.draw.rect(self.screen, fill,   pygame.Rect(x,y,w,h), border_radius=r)
