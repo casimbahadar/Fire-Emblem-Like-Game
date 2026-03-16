@@ -5,7 +5,7 @@ Includes: recruit mechanic, reinforcement waves, flying/mounted movement
 import copy
 from game.constants import *
 from game.chapter import CHAPTERS
-from game.unit import create_unit_roster
+from game.unit import create_unit_roster, create_mercenary
 from game.ai import EnemyAI
 from game.combat import resolve_combat, resolve_heal
 from game.dialogs import get_pre_combat_dialog, reset_dialog_flags
@@ -26,6 +26,31 @@ class GameState:
         self.turn        = 1
         self.phase       = FACTION_PLAYER
         self.state       = STATE_TITLE
+
+        # ── Economy ───────────────────────────────────────────────────────────
+        self.gold = STARTING_GOLD
+
+        # ── Deployment mode ───────────────────────────────────────────────────
+        # DEPLOY_FORCED: chapter-defined required units; DEPLOY_FREE: player picks any
+        self.deploy_mode = DEPLOY_FORCED
+
+        # ── Persistent roster for free-deploy (all unlocked named units) ──────
+        # Accumulated across chapters — new characters added here on unlock
+        self.free_roster: list = []
+
+        # ── Prep-screen state ─────────────────────────────────────────────────
+        self.prep_available_units: list = []
+        self.prep_selected_units: list  = []
+        self.prep_mercs: list           = []
+        self.prep_tab       = PREP_TAB_DEPLOY
+        self.prep_cursor    = 0
+        self.prep_max_mercs = 3
+
+        # ── Side objectives ───────────────────────────────────────────────────
+        # Current chapter active side objectives (reset each chapter)
+        self.active_side_objectives: list = []
+        # Persistent set of completed side objective IDs (carried across chapters)
+        self.completed_obj_ids: set = set()
 
         self.selected_unit   = None
         self.cursor_x        = 0
@@ -66,6 +91,10 @@ class GameState:
         # Tutorial
         self.tutorial = TutorialManager()
 
+        # Pre-battle scene dialog state
+        self.scene_dialog     = []   # list of (speaker_key, display_name, line)
+        self.scene_dialog_idx = 0    # current line being shown
+
         # Boss dialog state
         self.pending_dialog       = None   # list of (speaker, text) or None
         self.pending_dialog_idx   = 0
@@ -77,7 +106,10 @@ class GameState:
     def load_chapter(self, index):
         self.chapter_index   = index
         self.current_chapter = CHAPTERS[index]
-        gmap, players, enemies, allies, waves = self.current_chapter.build(self.roster)
+        ch = self.current_chapter
+
+        # Build the full chapter data (map + all unit placements)
+        gmap, players, enemies, allies, waves, side_objs = ch.build(self.roster)
 
         # Casual mode: revive player units that died last chapter at full HP
         if not self.classic_mode and self._casual_dead:
@@ -87,16 +119,56 @@ class GameState:
                     dead_u.hp = dead_u.max_hp
                     dead_u.alive = True
                     dead_u.faction = FACTION_PLAYER
-                    # Place off-map initially; chapter placement can override
                     dead_u.x, dead_u.y = 0, 0
                     players.append(dead_u)
             self._casual_dead = []
 
         self.game_map       = gmap
-        self.player_units   = players
         self.enemy_units    = enemies
         self.ally_units     = allies
         self.reinforce_waves= waves
+
+        # ── Side objectives (filter by chain prerequisites) ───────────────────
+        self.active_side_objectives = [
+            so for so in side_objs
+            if all(r in self.completed_obj_ids for r in so.requires)
+        ]
+
+        # ── Prep screen initialisation ────────────────────────────────────────
+        limit = ch.deploy_limit
+
+        if self.deploy_mode == DEPLOY_FREE and self.free_roster:
+            # Free mode: player picks from their accumulated roster
+            import copy as _cp
+            avail = []
+            seen = set()
+            for u in self.free_roster:
+                if u.unit_id not in seen and u.alive:
+                    avail.append(_cp.deepcopy(u))
+                    seen.add(u.unit_id)
+            # Also include any new chapter-specific characters
+            for u in players:
+                if u.unit_id not in seen:
+                    avail.append(u)
+                    seen.add(u.unit_id)
+            self.prep_available_units = avail
+            # Required forced units (lord etc.) auto-selected first
+            forced_ids = set(ch.forced_units or [])
+            forced = [u for u in avail if u.unit_id in forced_ids]
+            others = [u for u in avail if u.unit_id not in forced_ids]
+            self.prep_selected_units = (forced + others)[:limit]
+        else:
+            # Forced mode: chapter decides available pool
+            self.prep_available_units = players
+            self.prep_selected_units  = list(players[:limit])
+
+        self.prep_mercs     = []
+        self.prep_tab       = PREP_TAB_DEPLOY
+        self.prep_cursor    = 0
+        self.prep_max_mercs = max(1, limit - len(self.prep_available_units))
+
+        # Keep player_units empty until prep is confirmed
+        self.player_units = []
 
         self.turn    = 1
         self.phase   = FACTION_PLAYER
@@ -113,13 +185,68 @@ class GameState:
         self.stat_sheet_unit = None
         self._defend_turns_survived = 0
 
+        # ── Flow: scene → prep → chapter intro ───────────────────────────────
+        if ch.scene_dialog:
+            self.scene_dialog     = ch.scene_dialog
+            self.scene_dialog_idx = 0
+            self.state = STATE_SCENE
+        else:
+            self.scene_dialog     = []
+            self.scene_dialog_idx = 0
+            self.state = STATE_PREP
+
+        self.cursor_x = 0
+        self.cursor_y = 0
+
+    def confirm_prep_and_start(self):
+        """
+        Called when the player hits 'Battle!' on the prep screen.
+        Deploys selected named units + purchased mercs onto the map
+        using the chapter's player_unit_defs placement data.
+        """
+        ch = self.current_chapter
+        import copy as _copy
+
+        # Build id→position map from chapter's original unit defs
+        pos_map = {uid: (x, y) for uid, x, y in ch.player_unit_defs}
+
+        deployed = []
+        for u in self.prep_selected_units:
+            if u.unit_id in pos_map:
+                u.x, u.y = pos_map[u.unit_id]
+            else:
+                # Shouldn't happen, but just in case
+                u.x, u.y = 0, 0
+            deployed.append(u)
+
+        # Place mercs at the first few spawn positions not taken by named units
+        taken_positions = {(u.x, u.y) for u in deployed}
+        # Use last positions in player_unit_defs as fallback merc spawn points
+        fallback = [(x, y) for _, x, y in ch.player_unit_defs
+                    if (x, y) not in taken_positions]
+        for i, merc in enumerate(self.prep_mercs):
+            if i < len(fallback):
+                merc.x, merc.y = fallback[i]
+            else:
+                merc.x, merc.y = 0, 0
+            deployed.append(merc)
+
+        self.player_units = deployed
+
+        # Update free roster with any new named characters from this chapter
+        existing_ids = {u.unit_id for u in self.free_roster}
+        import copy as _cp
+        for u in deployed:
+            if not getattr(u, '_is_merc', False) and u.unit_id not in existing_ids:
+                self.free_roster.append(_cp.deepcopy(u))
+                existing_ids.add(u.unit_id)
+
         for u in self.all_units():
             u.reset_turn()
 
         self.ai_controller = EnemyAI(self)
         self.state = STATE_CHAPTER_INTRO
 
-        # Cursor to first player lord
         lords = [u for u in self.player_units if u.is_lord and u.alive]
         if lords:
             self.cursor_x = lords[0].x
@@ -272,6 +399,8 @@ class GameState:
             unit.y = ty
             unit.has_moved = True
             self._compute_ranges(unit)
+            if unit.faction == FACTION_PLAYER:
+                self.check_side_objectives("visit_tile", tile=(tx, ty))
             return True
         return False
 
@@ -353,6 +482,8 @@ class GameState:
             self.push_message(f"{defender.name} was defeated!")
             if not self.classic_mode and defender.faction == FACTION_PLAYER:
                 self._casual_dead.append(defender)
+            if defender.faction == FACTION_ENEMY:
+                self.check_side_objectives("kill_unit", unit_id=defender.unit_id)
         if not attacker.alive:
             self.push_message(f"{attacker.name} was defeated!")
             if not self.classic_mode and attacker.faction == FACTION_PLAYER:
@@ -394,7 +525,12 @@ class GameState:
         target.recruited = True
         target.reset_turn()
         self.player_units.append(target)
+        # Add to free roster for future chapter availability
+        if target.unit_id not in {u.unit_id for u in self.free_roster}:
+            import copy as _cp
+            self.free_roster.append(_cp.deepcopy(target))
         self.push_message(f"{target.name} has joined your cause!")
+        self.check_side_objectives("recruit_unit", unit_id=target.unit_id)
         recruiter.done()
         return True
 
@@ -434,11 +570,64 @@ class GameState:
         if lords and all(not u.alive for u in lords):
             self._trigger_defeat()
 
+    # ── Side Objectives ───────────────────────────────────────────────────────
+
+    def check_side_objectives(self, event_type, **kwargs):
+        """
+        Call after relevant game events. event_type is one of:
+          "kill_unit", "visit_tile", "recruit_unit", "chapter_end"
+        kwargs carry event-specific data.
+        """
+        for so in self.active_side_objectives:
+            if so.completed or so.failed:
+                continue
+            triggered = False
+            if so.obj_type == "kill_unit" and event_type == "kill_unit":
+                triggered = (kwargs.get("unit_id") == so.target)
+            elif so.obj_type == "visit_tile" and event_type == "visit_tile":
+                triggered = (kwargs.get("tile") == so.target)
+            elif so.obj_type == "recruit_unit" and event_type == "recruit_unit":
+                triggered = (kwargs.get("unit_id") == so.target)
+            elif so.obj_type == "clear_turns" and event_type == "chapter_end":
+                triggered = (self.turn <= int(so.target))
+            elif so.obj_type == "no_casualties" and event_type == "chapter_end":
+                triggered = not any(
+                    not u.alive for u in self.player_units
+                    if not getattr(u, '_is_merc', False)
+                )
+            elif so.obj_type == "protect_unit" and event_type == "chapter_end":
+                target_alive = any(
+                    u.alive for u in self.player_units + self.ally_units
+                    if u.unit_id == so.target
+                )
+                triggered = target_alive
+
+            if triggered:
+                so.completed = True
+                self.completed_obj_ids.add(so.obj_id)
+                self.gold += so.gold_reward
+                msg = f"Side Objective: {so.description}"
+                if so.gold_reward:
+                    msg += f"  (+{so.gold_reward} ryo)"
+                self.push_message(msg)
+                # Unlock a special character if this obj specifies one
+                if so.unlock_unit and so.unlock_unit in self.roster:
+                    import copy as _cp
+                    new_u = _cp.deepcopy(self.roster[so.unlock_unit])
+                    new_u.faction = FACTION_PLAYER
+                    if new_u.unit_id not in {u.unit_id for u in self.free_roster}:
+                        self.free_roster.append(new_u)
+                    self.push_message(
+                        f"{new_u.name} will be available from the next chapter!")
+
     def _trigger_victory(self):
         if not self.victory:
             self.victory = True
             self.state   = STATE_VICTORY
-            self.push_message("Victory!")
+            self.gold   += GOLD_PER_CHAPTER
+            # Check end-of-chapter side objectives
+            self.check_side_objectives("chapter_end")
+            self.push_message(f"Victory!  (+{GOLD_PER_CHAPTER} gold)")
 
     def _trigger_defeat(self):
         if not self.defeat:

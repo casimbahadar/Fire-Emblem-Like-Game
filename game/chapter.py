@@ -6,6 +6,34 @@ import copy
 from game.constants import *
 from game.unit import create_unit_roster
 from game.map import MAP_BUILDERS
+from game.scene_dialogs import CHAPTER_SCENES
+
+
+class SideObjective:
+    """
+    An optional in-chapter objective that rewards gold and/or unlocks
+    special characters. Types:
+      "kill_unit"    — defeat a specific enemy unit (target = unit_id)
+      "visit_tile"   — any player unit steps on tile (target = (x,y))
+      "protect_unit" — named unit survives chapter (target = unit_id)
+      "clear_turns"  — clear chapter within N turns (target = int)
+      "recruit_unit" — recruit a specific unit (target = unit_id)
+      "no_casualties"— finish chapter with no player casualties
+    Chain requirements: if `requires` is a list of obj_ids, this objective
+    only activates once all required objectives (from past chapters) are done.
+    """
+    def __init__(self, obj_id, description, obj_type, target,
+                 gold_reward=0, unlock_unit=None, requires=None, detail=""):
+        self.obj_id       = obj_id
+        self.description  = description
+        self.obj_type     = obj_type
+        self.target       = target
+        self.gold_reward  = gold_reward
+        self.unlock_unit  = unlock_unit   # unit_id to add to player roster
+        self.requires     = requires or []
+        self.detail       = detail
+        self.completed    = False
+        self.failed       = False
 
 
 class ReinforcementWave:
@@ -25,7 +53,9 @@ class Chapter:
                  objective, objective_detail,
                  player_units, enemy_units, ally_units,
                  map_builder, turn_limit=None,
-                 reinforcements=None, seize_unit="nobunaga"):
+                 reinforcements=None, seize_unit="nobunaga",
+                 deploy_limit=8, side_objectives=None,
+                 forced_units=None):
         self.number   = number
         self.title    = title
         self.subtitle = subtitle
@@ -40,7 +70,15 @@ class Chapter:
         self.map_builder       = map_builder
         self.turn_limit        = turn_limit
         self.reinforcements    = reinforcements or []
-        self.seize_unit        = seize_unit   # which lord seizes
+        self.seize_unit        = seize_unit
+        self.deploy_limit      = deploy_limit
+        # Optional side objectives (list of SideObjective)
+        self.side_objectives   = side_objectives or []
+        # Units that MUST be deployed in FORCED mode (list of unit_ids or None=any)
+        self.forced_units      = forced_units or []
+        # Pre-battle scene dialog
+        idx = number - 1
+        self.scene_dialog = CHAPTER_SCENES[idx] if 0 <= idx < len(CHAPTER_SCENES) else []
 
     def build(self, roster):
         """Instantiate chapter. Returns (game_map, player_units, enemy_units, ally_units, reinf_waves)."""
@@ -62,7 +100,6 @@ class Chapter:
         enemies = place(self.enemy_unit_defs,  FACTION_ENEMY)
         allies  = place(self.ally_unit_defs,   FACTION_ALLY)
 
-        # Deep copy reinforcements so .triggered flag is fresh each play
         waves = []
         for wave in self.reinforcements:
             w = ReinforcementWave(
@@ -74,7 +111,17 @@ class Chapter:
             )
             waves.append(w)
 
-        return gmap, players, enemies, allies, waves
+        # Fresh copy of side objectives each play
+        side_objs = []
+        for so in self.side_objectives:
+            side_objs.append(SideObjective(
+                obj_id=so.obj_id, description=so.description,
+                obj_type=so.obj_type, target=so.target,
+                gold_reward=so.gold_reward, unlock_unit=so.unlock_unit,
+                requires=so.requires, detail=so.detail,
+            ))
+
+        return gmap, players, enemies, allies, waves, side_objs
 
 
 # ─── Chapter Definitions ──────────────────────────────────────────────────────
@@ -104,13 +151,13 @@ CHAPTERS = [
         objective=OBJ_SEIZE, objective_detail="Seize the castle (14,7) with Nobunaga.",
         player_units=[
             ("nobunaga", 1,8), ("hideyoshi",1,7), ("ranmaru",0,6),
-            ("oda_ash1", 2,9), ("oda_ash2", 0,9), ("oda_arch1",1,9),
         ],
         enemy_units=[
             ("e_ash1",12,2), ("e_ash2",13,4), ("e_ash3",12,5),
             ("e_cav1",11,3), ("e_arch1",14,5), ("kansuke",13,6),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[1],
+        deploy_limit=5,
         reinforcements=[
             ReinforcementWave(4, FACTION_ENEMY,
                 [("e_ash4",14,9),("e_sam1",13,9)],
@@ -142,7 +189,7 @@ CHAPTERS = [
         objective_detail="Defeat Imagawa Yoshimoto in the forest.",
         player_units=[
             ("nobunaga",1,10), ("mitsuhide",2,10), ("hideyoshi",1,9),
-            ("ranmaru",0,9),   ("nene",3,10),      ("oda_arch1",2,9),
+            ("ranmaru",0,9),   ("nene",3,10),
         ],
         enemy_units=[
             ("e_ash1",5,6), ("e_ash2",7,5), ("e_ash3",3,5),
@@ -150,10 +197,26 @@ CHAPTERS = [
             ("e_monk1",10,4), ("yoshimoto",6,4),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[2],
+        deploy_limit=6,
+        forced_units=["nobunaga"],
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_sam1",12,5),("e_cav1",11,4)],
                 "Imagawa reinforcements rush to protect their lord!"),
+        ],
+        side_objectives=[
+            # Chain A Step 1 — Devoted Path: defeat Yoshimoto without Nobunaga striking
+            SideObjective("devoted_a1",
+                "Defeat Yoshimoto using only non-lord units",
+                "kill_unit", "yoshimoto",
+                gold_reward=SIDE_OBJ_GOLD_SMALL,
+                detail="Hideyoshi or another officer must land the killing blow."),
+            # Solo bonus: clear within 5 turns
+            SideObjective("speed_ch2",
+                "Clear Okehazama within 5 turns",
+                "clear_turns", 5,
+                gold_reward=SIDE_OBJ_GOLD_SMALL,
+                detail="Strike fast before Imagawa's scouts can call reinforcements."),
         ]
     ),
 
@@ -180,8 +243,7 @@ CHAPTERS = [
         objective=OBJ_ROUT_ENEMY, objective_detail="Defeat all enemy units.",
         player_units=[
             ("nobunaga",1,5), ("hideyoshi",0,5), ("katsuie",1,6),
-            ("nagahide",0,6), ("mitsuhide",2,5), ("oda_monk1",1,7),
-            ("oda_arch1",2,6), ("oda_ash1",0,7),
+            ("nagahide",0,6), ("mitsuhide",2,5),
         ],
         enemy_units=[
             ("kenshin",2,0), ("kanetsugu",3,1), ("kagetsora",4,1),
@@ -189,8 +251,24 @@ CHAPTERS = [
             ("shingen",13,11), ("kansuke",12,10), ("masakage",14,10),
             ("e_cav1",13,10), ("e_ash1",12,11), ("e_ash2",14,11),
         ],
-        ally_units=[("ieyasu",2,7)],
+        # Tokugawa Ieyasu allied with Oda at Kawanakajima
+        ally_units=[("ieyasu",2,7), ("tadakatsu",3,7)],
         map_builder=MAP_BUILDERS[3],
+        deploy_limit=8,
+        forced_units=["nobunaga"],
+        side_objectives=[
+            # Chain B Step 1 — Shadow Network: Ranmaru reaches the enemy command post
+            SideObjective("shadow_b1",
+                "Move Ranmaru to the northern command post (tile 3,2)",
+                "visit_tile", (3, 2),
+                gold_reward=SIDE_OBJ_GOLD_SMALL,
+                detail="Ranmaru scouts the enemy command structure for Nobunaga."),
+            SideObjective("no_loss_ch3",
+                "Complete the chapter without losing any unit",
+                "no_casualties", None,
+                gold_reward=SIDE_OBJ_GOLD_MEDIUM,
+                detail="A flawless victory sends a message to all of Japan."),
+        ],
         reinforcements=[
             ReinforcementWave(4, FACTION_ENEMY,
                 [("nobushige",0,1),("masanobu",15,10)],
@@ -225,18 +303,30 @@ CHAPTERS = [
             "act of a great man. The age of Oda ends at dawn."
         ),
         objective=OBJ_SEIZE,
-        objective_detail="Reach the inner sanctum (7,6) with Nobunaga to survive.",
+        objective_detail="Reach the inner sanctum (7,6) with Nobunaga. Mitsuhide, Hidemitsu, and Miyabe command the encirclement.",
         player_units=[
             ("nobunaga",7,11), ("ranmaru",6,11), ("nagahide",8,11),
-            ("oda_ash1",6,10), ("oda_ash2",8,10), ("oda_monk1",7,10),
         ],
         enemy_units=[
-            ("mitsuhide",7,0), ("e_sam1",5,2), ("e_sam2",9,2),
+            # Three Akechi commanders: Mitsuhide + his nephew Hidemitsu + strategist Miyabe
+            ("mitsuhide",7,0), ("hidemitsu",5,1), ("miyabe",9,1),
+            ("e_sam1",5,2), ("e_sam2",9,2), ("mitsuyoshi",7,2),
             ("e_spear1",4,4), ("e_spear2",10,4), ("e_ninja1",6,5),
             ("e_ash1",3,6), ("e_ash2",11,6), ("e_arch1",5,8),
             ("e_cav1",9,8), ("e_ash3",4,9), ("e_hat1",10,9),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[4],
+        deploy_limit=5,
+        forced_units=["nobunaga"],
+        side_objectives=[
+            # Chain B Step 2 — Protect Ranmaru from the assassins
+            SideObjective("shadow_b2",
+                "Keep Ranmaru alive through the Honnoji ambush",
+                "protect_unit", "ranmaru",
+                gold_reward=SIDE_OBJ_GOLD_MEDIUM,
+                requires=["shadow_b1"],
+                detail="If Ranmaru survives, his loyalty proves unbreakable."),
+        ],
         reinforcements=[
             ReinforcementWave(2, FACTION_ENEMY,
                 [("e_ron1",2,4),("e_ron2",12,4)],
@@ -272,8 +362,7 @@ CHAPTERS = [
         objective_detail="Seize the center of Sekigahara (9,6) with any lord unit.",
         player_units=[
             ("hideyoshi",1,13), ("katsuie",0,12), ("nagahide",2,12),
-            ("nene",1,12), ("oda_arch1",3,13), ("oda_ash1",0,13),
-            ("oda_ash2",2,13), ("oda_monk1",1,11), ("ieyasu",3,12),
+            ("nene",1,12), ("ieyasu",3,12),
         ],
         enemy_units=[
             ("yoshihisa",9,1), ("yoshihiro",8,2),
@@ -285,6 +374,7 @@ CHAPTERS = [
             ("e_arch1",7,3),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[5],
+        deploy_limit=8,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("otani",5,2),("mitsunari",4,1)],
@@ -322,8 +412,7 @@ CHAPTERS = [
         objective_detail="Seize Inabayama Castle at the mountain peak (6-7, 0).",
         player_units=[
             ("nobunaga",6,12), ("hideyoshi",7,12), ("katsuie",5,12),
-            ("mitsuhide",8,12), ("oda_ash1",6,11), ("oda_ash2",7,11),
-            ("oda_spear1",5,11), ("oda_arch1",8,11),
+            ("mitsuhide",8,12),
         ],
         enemy_units=[
             ("tatsuoki",6,0), ("e_sam1",5,2), ("e_sam2",8,2),
@@ -331,6 +420,7 @@ CHAPTERS = [
             ("e_arch2",9,5), ("e_spear1",6,6), ("e_gen1",7,6),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[6],
+        deploy_limit=7,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_sam2",4,2),("e_ash3",9,3)],
@@ -366,10 +456,10 @@ CHAPTERS = [
         objective_detail="Defeat all enemy forces. Recruit Azai Nagamasa with Oichi.",
         player_units=[
             ("nobunaga",2,5), ("hideyoshi",1,5), ("katsuie",3,5),
-            ("oichi",2,6), ("toshiie",1,6), ("oda_cav1",0,5),
-            ("oda_arch1",3,6), ("oda_ash1",0,6), ("ieyasu",1,7),
+            ("oichi",2,6), ("toshiie",1,6), ("ieyasu",1,7),
         ],
         enemy_units=[
+            # Nagamasa recruitable with Oichi (his wife)
             ("nagamasa",4,2), ("e_sam1",3,1), ("e_sam2",5,1),
             ("e_ash1",2,2), ("e_cav1",6,2),
             ("yoshikage",13,9), ("e_sam3",12,10), ("e_ash2",14,9),
@@ -377,6 +467,22 @@ CHAPTERS = [
         ],
         ally_units=[("tadakatsu",2,7),("naomasa",3,7)],
         map_builder=MAP_BUILDERS[7],
+        deploy_limit=9,
+        forced_units=["nobunaga", "oichi"],
+        side_objectives=[
+            # Chain A Step 2 — Devoted Path: Oichi survives at full HP for 3 turns
+            SideObjective("devoted_a2",
+                "Oichi remains unharmed for the first 3 turns",
+                "protect_unit", "oichi",
+                gold_reward=SIDE_OBJ_GOLD_MEDIUM,
+                requires=["devoted_a1"],
+                detail="Her dignity must not be shattered by her brother's war."),
+            SideObjective("recruit_nagamasa",
+                "Recruit Nagamasa using Oichi",
+                "recruit_unit", "nagamasa",
+                gold_reward=SIDE_OBJ_GOLD_MEDIUM,
+                detail="Azai Nagamasa can be swayed — only his wife can reach him."),
+        ],
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_cav2",2,0),("e_spear2",15,11)],
@@ -415,8 +521,7 @@ CHAPTERS = [
         objective_detail="Clear the island fortress. Recruit Kanbei by reaching him.",
         player_units=[
             ("nobunaga",7,12), ("hideyoshi",6,12), ("katsuie",8,12),
-            ("nagahide",5,12), ("nene",9,12), ("oda_ash1",6,11),
-            ("oda_ash2",8,11), ("oda_arch1",7,11), ("oda_gun1",5,11),
+            ("nagahide",5,12), ("nene",9,12),
         ],
         enemy_units=[
             ("e_ikko1",6,6), ("e_ikko2",7,5), ("e_ikko1",8,6),
@@ -427,6 +532,25 @@ CHAPTERS = [
             ("kanbei",12,6),    # appears as neutral-enemy, recruitable
         ],
         ally_units=[], map_builder=MAP_BUILDERS[8],
+        deploy_limit=9,
+        side_objectives=[
+            # Chain A Step 3 — Devoted Path final: recruit Yukimura within 4 turns
+            # Completing devoted_a1 + devoted_a2 + this unlocks Gracia as recruitable later
+            SideObjective("devoted_a3",
+                "Recruit Yukimura within the first 4 turns",
+                "recruit_unit", "yukimura",
+                gold_reward=SIDE_OBJ_GOLD_LARGE,
+                requires=["devoted_a2"],
+                unlock_unit="gracia",
+                detail="Yukimura's swift joining signals the chain of fate is set.\n"
+                       "CHAIN COMPLETE: Gracia joins the cause in Chapter 11!"),
+            # Chain C Step 1 — Sword Saint: recruit Kanbei within 5 turns
+            SideObjective("swordmaster_c1",
+                "Reach Kanbei within 5 turns",
+                "recruit_unit", "kanbei",
+                gold_reward=SIDE_OBJ_GOLD_MEDIUM,
+                detail="The strategist respects speed — impress him quickly."),
+        ],
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_ikko1",4,7),("e_ikko2",10,7),("e_monk1",7,9)],
@@ -459,16 +583,26 @@ CHAPTERS = [
         objective_detail="Hold Nagashino Castle for 8 turns.",
         player_units=[
             ("nobunaga",6,8), ("hideyoshi",7,8), ("kanbei",5,8),
-            ("katsuie",8,8), ("oda_gun1",6,7), ("oda_gun2",8,7),
-            ("oda_arch1",5,7), ("oda_arch2",9,7), ("oda_ash1",6,9),
+            ("katsuie",8,8),
         ],
         enemy_units=[
             ("shingen",9,1), ("masakage",8,1), ("masanobu",10,1),
             ("e_cav1",7,2), ("e_cav2",11,2), ("e_ash1",6,2),
             ("e_ash2",12,2), ("e_arch1",7,3), ("e_arch2",11,3),
         ],
-        ally_units=[], map_builder=MAP_BUILDERS[9],
-        turn_limit=None,  # Players must survive 8 turns (checked in state)
+        ally_units=[("ieyasu",7,8), ("tadakatsu",6,8)],
+        map_builder=MAP_BUILDERS[9],
+        deploy_limit=8,
+        turn_limit=None,
+        side_objectives=[
+            # Chain A bonus: no player casualties during the defence
+            SideObjective("devoted_a_bonus",
+                "Hold the castle 8 turns with no player casualties",
+                "no_casualties", None,
+                gold_reward=SIDE_OBJ_GOLD_LARGE,
+                requires=["devoted_a3"],
+                detail="Not one soldier is lost — Yukimura's presence inspires all."),
+        ],
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("nobushige",5,0),("e_cav1",13,2)],
@@ -504,25 +638,43 @@ CHAPTERS = [
             "The volley line breaks. Nobunaga's gamble fails."
         ),
         objective=OBJ_DEFEAT_BOSS,
-        objective_detail="Defeat Takeda Shingen. Saika Magoichi may be recruited.",
+        objective_detail="Defeat Takeda Katsuyori (new lord after Shingen) commanding the charge. His four generals — Shingen, Kansuke, Masakage, Masanobu — lead the cavalry wings.",
         player_units=[
             ("nobunaga",10,5), ("kanbei",9,5), ("katsuie",11,5),
-            ("toshiie",12,5), ("oda_gun1",8,5), ("oda_gun2",12,5),
-            ("oda_gun1",10,5), ("oda_arch1",9,6), ("oda_arch2",11,6),
-            ("oda_ash1",8,6),  ("oda_ash2",12,6),
+            ("toshiie",12,5),
         ],
         enemy_units=[
-            ("shingen",10,12), ("masakage",8,11), ("masanobu",12,11),
-            ("kansuke",9,12), ("e_cav1",7,11), ("e_cav2",11,11),
+            # Four Takeda commanders + Katsuyori as overall boss = 5 named bosses
+            ("katsuyori",10,13), ("shingen",10,12), ("masakage",8,11),
+            ("masanobu",12,11), ("kansuke",9,12),
+            ("e_cav1",7,11), ("e_cav2",11,11),
             ("e_cav1",6,10), ("e_cav2",13,10), ("e_ash1",9,10),
             ("e_ash2",11,10), ("magoichi",3,10),  # recruitable!
         ],
         ally_units=[("ieyasu",10,6),("tadakatsu",9,6),("naomasa",11,6)],
         map_builder=MAP_BUILDERS[10],
+        deploy_limit=10,
+        side_objectives=[
+            # Chain B final — Shadow Network: recruit Magoichi + Fuma appears in Ch16
+            SideObjective("shadow_b3",
+                "Recruit Saika Magoichi on the field",
+                "recruit_unit", "magoichi",
+                gold_reward=SIDE_OBJ_GOLD_LARGE,
+                requires=["shadow_b2"],
+                unlock_unit=None,   # fuma becomes recruitable in Ch16
+                detail="CHAIN COMPLETE: Fuma Kotaro will seek you out at Odawara."),
+            # Chain C Step 2 — Sword Saint: defeat all 5 Takeda commanders
+            SideObjective("swordmaster_c2",
+                "Defeat all five Takeda commanders",
+                "kill_unit", "katsuyori",   # last boss completes the set
+                gold_reward=SIDE_OBJ_GOLD_MEDIUM,
+                requires=["swordmaster_c1"],
+                detail="Katsuyori, Shingen, Kansuke, Masakage, Masanobu — all must fall."),
+        ],
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
-                [("nobushige",5,12),("e_hat1",14,10)],
-                "Takeda elite units commit to the charge — hold the palisade!"),
+                [("nobushige",5,12),("e_hat1",14,10),("narimasa",7,13)],
+                "Takeda generals commit to the charge — hold the palisade!"),
         ]
     ),
 
@@ -553,9 +705,7 @@ CHAPTERS = [
         objective_detail="Seize Mori's western fortress (6-8, 12). Recruit Motochika.",
         player_units=[
             ("hideyoshi",7,13), ("kanbei",6,13), ("kiyomasa",8,13),
-            ("fukushima",5,13), ("nene",9,13), ("oda_ash1",6,12),
-            ("oda_ash2",8,12), ("oda_cav1",5,12), ("oda_arch1",9,12),
-            ("oda_gun1",7,12),
+            ("fukushima",5,13), ("nene",9,13),
         ],
         enemy_units=[
             ("motonari",7,0), ("terumoto",8,1), ("ekei",6,1),
@@ -565,6 +715,21 @@ CHAPTERS = [
             ("motochika",3,13),  # recruitable!
         ],
         ally_units=[], map_builder=MAP_BUILDERS[11],
+        deploy_limit=10,
+        side_objectives=[
+            # Gracia appears in Ch11 if devoted chain is done
+            SideObjective("gracia_joins",
+                "Gracia visits the coastal shrine village (tile 1,6)",
+                "visit_tile", (1, 6),
+                gold_reward=SIDE_OBJ_GOLD_MEDIUM,
+                requires=["devoted_a3"],
+                detail="Akechi Mitsuhide's daughter seeks a new path after Honnoji."),
+            SideObjective("speed_ch11",
+                "Seize the fortress within 7 turns",
+                "clear_turns", 7,
+                gold_reward=SIDE_OBJ_GOLD_SMALL,
+                detail="A swift victory denies Mori time to coordinate a response."),
+        ],
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_pirate1",1,4),("e_pirate2",2,5)],
@@ -598,26 +763,27 @@ CHAPTERS = [
             "And in the chaos, the news from Honnoji is lost."
         ),
         objective=OBJ_SEIZE,
-        objective_detail="Seize the inner keep (6-7, 6) of Takamatsu Castle.",
+        objective_detail="Seize the inner keep (6-7, 6). Two bosses defend: Shimizu Muneharu commands the castle; Ankokuji Ekei leads the relief monks.",
         player_units=[
             ("hideyoshi",7,11), ("kanbei",6,11), ("kiyomasa",8,11),
-            ("fukushima",5,11), ("motochika",4,11), ("oda_ash1",6,10),
-            ("oda_arch1",8,10), ("oda_gun1",7,10), ("oda_gun2",5,10),
-            ("tsuruhime",9,11),
+            ("fukushima",5,11), ("motochika",4,11), ("tsuruhime",9,11),
         ],
         enemy_units=[
-            ("e_gen1",7,6), ("e_sam1",5,6), ("e_sam2",9,6),
+            # Two bosses: Muneharu (castle commander) + Okita (air patrol)
+            ("muneharu",7,6), ("okita_clan",8,5),
+            ("e_gen1",6,5), ("e_sam1",5,6), ("e_sam2",9,6),
             ("e_ash1",6,5), ("e_ash2",8,5), ("e_spear1",6,7),
             ("e_spear2",8,7), ("e_arch1",5,8), ("e_arch2",9,8),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[12],
+        deploy_limit=10,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
                 [("e_pirate1",2,10),("e_pirate2",13,10)],
                 "Mori naval reinforcements arrive by water!"),
             ReinforcementWave(5, FACTION_ENEMY,
                 [("ekei",7,4),("e_monk2",6,4),("e_monk2",8,4)],
-                "The Mori send warrior monks to the inner keep!"),
+                "Ankokuji Ekei leads warrior monks to relieve the inner keep!"),
         ]
     ),
 
@@ -647,22 +813,40 @@ CHAPTERS = [
         player_units=[
             ("hideyoshi",9,12), ("kanbei",8,12), ("kiyomasa",10,12),
             ("fukushima",7,12), ("toshiie",11,12), ("nene",9,11),
-            ("oda_cav1",8,11), ("oda_cav1",10,11), ("oda_arch1",7,11),
-            ("oda_gun1",11,11), ("motochika",6,12),
+            ("motochika",6,12),
         ],
         enemy_units=[
-            ("mitsuhide",9,0), ("e_sam1",7,1), ("e_sam2",11,1),
-            ("e_ash1",6,2), ("e_ash2",12,2), ("e_spear1",8,2),
-            ("e_spear2",10,2), ("e_arch1",7,4), ("e_arch2",11,4),
-            ("e_cav1",8,5), ("e_cav2",10,5), ("e_ron1",5,3),
+            # Ch13 — first promoted enemies appear; mix of lv8-10 unpromoted + promoted elites
+            ("mitsuhide",9,0), ("pe_ron1",7,1), ("e_sam3",11,1),
+            ("e_ash4",6,2), ("e_ash5",12,2), ("e_spear2",8,2),
+            ("pe_lc1",10,2), ("e_arch2",7,4), ("pe_ea1",11,4),
+            ("pe_hat1",8,5), ("e_ron1",10,5), ("pe_ron1",5,3),
         ],
-        ally_units=[], map_builder=MAP_BUILDERS[13],
+        ally_units=[("toshiie",10,12)],
+        map_builder=MAP_BUILDERS[13],
+        deploy_limit=11,
+        side_objectives=[
+            # Chain C final — Sword Saint: Musashi appears as recruitable ally
+            SideObjective("swordmaster_c3",
+                "Defeat Mitsuhide within 6 turns",
+                "kill_unit", "mitsuhide",
+                gold_reward=SIDE_OBJ_GOLD_LARGE,
+                requires=["swordmaster_c2"],
+                unlock_unit="musashi",
+                detail="CHAIN COMPLETE: Miyamoto Musashi, the legendary Sword Saint,\n"
+                       "will join your banner in Chapter 15!"),
+            SideObjective("no_loss_ch13",
+                "Complete Yamazaki without losing any unit",
+                "no_casualties", None,
+                gold_reward=SIDE_OBJ_GOLD_MEDIUM,
+                detail="Hideyoshi's retribution is swift and total."),
+        ],
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
-                [("e_hat1",6,0),("e_hat1",12,0)],
-                "Mitsuhide's elite hatamoto form a last defensive line!"),
+                [("pe_hat1",6,0),("pe_hat1",12,0)],
+                "Mitsuhide's promoted hatamoto form a last defensive line!"),
             ReinforcementWave(4, FACTION_ALLY,
-                [("nobunaga",9,12),("ranmaru",8,12)],   # Ghost of Nobunaga?? No — survivors!
+                [("nobunaga",9,12),("ranmaru",8,12)],
                 "Additional Oda loyalists join Hideyoshi's pursuit!"),
         ]
     ),
@@ -690,25 +874,26 @@ CHAPTERS = [
             "The Oda succession remains contested."
         ),
         objective=OBJ_DEFEAT_BOSS,
-        objective_detail="Defeat Shibata Katsuie on the mountain.",
+        objective_detail="Defeat Shibata Katsuie on the mountain. His lieutenants Sassa Narimasa and elite hatamoto guard the slopes.",
         player_units=[
             ("hideyoshi",8,13), ("kanbei",7,13), ("kiyomasa",9,13),
             ("fukushima",6,13), ("toshiie",10,13), ("nene",8,12),
-            ("oda_cav1",7,12), ("oda_arch1",9,12), ("oda_gun1",6,12),
-            ("oda_gun2",10,12), ("motochika",5,13),
+            ("motochika",5,13),
         ],
         enemy_units=[
-            # Katsuie is ENEMY this chapter — internal conflict
-            ("katsuie",6,0), ("e_gen1",5,1), ("e_gen1",7,1),
-            ("e_sam1",4,2), ("e_sam2",8,2), ("e_hat1",5,2),
-            ("e_ash1",4,4), ("e_ash2",8,4), ("e_spear1",6,4),
-            ("e_arch1",4,6), ("e_arch2",8,6), ("e_cav1",6,7),
+            # Ch14 — Two bosses: Katsuie + Narimasa; promoted units lv9-11
+            ("katsuie",6,0), ("narimasa",8,1), ("pe_gen1",5,1),
+            ("e_sam3",4,2), ("pe_ron1",8,2), ("pe_hat1",5,2),
+            ("e_ash5",4,4), ("e_ash5",8,4), ("e_spear2",6,4),
+            ("e_arch2",4,6), ("pe_ea1",8,6), ("pe_lc1",6,7),
         ],
+        # Maeda Toshiie defected from Katsuie mid-battle — one of history's key moments
         ally_units=[], map_builder=MAP_BUILDERS[14],
+        deploy_limit=11,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
-                [("e_hat1",3,3),("e_hat1",9,3)],
-                "Katsuie's veteran hatamoto descend from the peak!"),
+                [("pe_hat1",3,3),("pe_hat2",9,3)],
+                "Katsuie's elite promoted hatamoto descend from the peak!"),
             ReinforcementWave(5, FACTION_ALLY,
                 [("ieyasu",8,13),("naomasa",7,13)],
                 "Tokugawa forces arrive to support Hideyoshi's flank!"),
@@ -742,20 +927,21 @@ CHAPTERS = [
         player_units=[
             ("hideyoshi",5,12), ("kanbei",4,12), ("kiyomasa",6,12),
             ("fukushima",3,12), ("toshiie",7,12), ("nene",5,11),
-            ("oda_cav1",4,11), ("oda_arch1",6,11), ("oda_gun1",3,11),
-            ("oda_gun2",7,11), ("magoichi",8,12),
+            ("magoichi",8,12),
         ],
         enemy_units=[
+            # Ch15 — Tokugawa as enemy: promoted units throughout, lv10-12
             ("ieyasu",14,0), ("tadakatsu",13,0), ("naomasa",15,0),
-            ("hanzo",12,1), ("e_cav1",13,2), ("e_cav2",15,2),
-            ("e_ash1",12,3), ("e_ash2",16,3), ("e_arch1",13,4),
-            ("e_gen1",14,2),
+            ("hanzo",12,1), ("pe_nc1",13,2), ("pe_lc1",15,2),
+            ("e_ash5",12,3), ("pe_ron1",16,3), ("pe_ea1",13,4),
+            ("pe_gen1",14,2),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[15],
+        deploy_limit=11,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
-                [("e_hat1",13,1),("e_hat1",15,1),("naomasa",14,0)],
-                "Tokugawa sends their elite hatamoto forward!"),
+                [("pe_hat1",13,1),("pe_hat2",15,1),("naomasa",14,0)],
+                "Tokugawa sends promoted hatamoto elites forward!"),
             ReinforcementWave(5, FACTION_ALLY,
                 [("motochika",4,12),("tsuruhime",8,12)],
                 "Shikoku allies arrive to bolster the Toyotomi line!"),
@@ -789,25 +975,41 @@ CHAPTERS = [
         player_units=[
             ("hideyoshi",10,15), ("kanbei",9,15), ("kiyomasa",11,15),
             ("fukushima",8,15), ("toshiie",12,15), ("magoichi",7,15),
-            ("oda_gun1",9,14), ("oda_gun2",11,14), ("oda_arch1",8,14),
-            ("oda_cav1",12,14), ("motochika",6,15),
+            ("motochika",6,15),
         ],
         enemy_units=[
+            # Ch16 — Odawara siege: mostly promoted defenders, lv10-13
             ("ujiyasu",9,8), ("ujimasa",8,7), ("fuma",7,9),  # fuma recruitable!
-            ("e_gen1",8,5), ("e_gen1",10,5), ("e_gen2",9,5),
-            ("e_sam1",7,6), ("e_sam2",11,6), ("e_hat1",8,6),
-            ("e_hat1",10,6), ("e_ash1",7,7), ("e_ash2",11,7),
-            ("e_arch1",6,8), ("e_arch2",12,8), ("e_ksama1",5,9),
+            ("pe_gen1",8,5), ("pe_gen1",10,5), ("pe_gg1",9,5),
+            ("pe_ron1",7,6), ("pe_hat1",11,6), ("pe_hat1",8,6),
+            ("pe_nc1",10,6), ("e_ash5",7,7), ("e_ash5",11,7),
+            ("pe_ea1",6,8), ("pe_ea1",12,8), ("pe_tm1",5,9),
         ],
         ally_units=[("ieyasu",10,15),("tadakatsu",9,15),("naomasa",11,15)],
         map_builder=MAP_BUILDERS[16],
+        deploy_limit=12,
+        side_objectives=[
+            # Shadow chain reward: Fuma Kotaro recruitable here if shadow chain done
+            SideObjective("shadow_fuma",
+                "Recruit Fuma Kotaro (the Hojo ninja master)",
+                "recruit_unit", "fuma",
+                gold_reward=SIDE_OBJ_GOLD_LARGE,
+                requires=["shadow_b3"],
+                detail="The shadow network built since Kawanakajima led here.\n"
+                       "Fuma sees a worthy master in Nobunaga's legacy."),
+            SideObjective("trade_ch16",
+                "Keep all Tokugawa ally units alive",
+                "protect_unit", "ieyasu",
+                gold_reward=SIDE_OBJ_GOLD_MEDIUM,
+                detail="Ieyasu's goodwill is worth more than any gold."),
+        ],
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
-                [("e_gen2",7,4),("e_gen2",11,4),("e_hat1",9,4)],
-                "Castle defenders reinforce the inner walls!"),
+                [("pe_gen2",7,4),("pe_gg1",11,4),("pe_hat1",9,4)],
+                "Promoted castle defenders reinforce the inner walls!"),
             ReinforcementWave(5, FACTION_ENEMY,
-                [("e_wy1",5,3),("e_wy2",13,3)],
-                "Wyvern knight scouts attack from above the walls!"),
+                [("pe_fk1",5,3),("pe_sl1",13,3)],
+                "Promoted aerial defenders attack from above the walls!"),
         ]
     ),
 
@@ -837,27 +1039,27 @@ CHAPTERS = [
         objective_detail="Hold Fushimi Castle for 10 turns. Prevent the keep from falling.",
         player_units=[
             ("ieyasu",8,7), ("tadakatsu",7,7), ("naomasa",9,7),
-            ("hanzo",8,8), ("kanbei",7,8), ("oda_gun1",7,6),
-            ("oda_gun2",9,6), ("oda_arch1",6,7), ("oda_arch2",10,7),
-            ("oda_ash1",7,9), ("oda_ash2",9,9),
+            ("hanzo",8,8), ("kanbei",7,8),
         ],
         enemy_units=[
+            # Ch17 — Fushimi siege: all promoted enemies, lv11-13
             ("mitsunari",9,0), ("otani",8,0), ("konishi",10,0),
-            ("e_sam1",7,1), ("e_sam2",11,1), ("e_ash1",6,1),
-            ("e_ash2",12,1), ("e_spear1",8,1), ("e_spear2",10,1),
-            ("e_arch1",7,2), ("e_arch2",11,2), ("e_gen1",9,1),
+            ("pe_ron1",7,1), ("pe_hat1",11,1), ("pe_wl1",6,1),
+            ("pe_lc1",12,1), ("pe_nc1",8,1), ("pe_nc1",10,1),
+            ("pe_ea1",7,2), ("pe_fk1",11,2), ("pe_gen1",9,1),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[17],
+        deploy_limit=10,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
-                [("e_cav1",5,0),("e_cav2",13,0),("e_hat1",9,0)],
-                "Mitsunari sends in cavalry to overwhelm the gates!"),
+                [("pe_lc2",5,0),("pe_nc1",13,0),("pe_hat1",9,0)],
+                "Mitsunari sends promoted cavalry to overwhelm the gates!"),
             ReinforcementWave(5, FACTION_ENEMY,
-                [("e_wy1",4,1),("e_wy2",14,1)],
-                "Wyvern knights assault the walls from above!"),
+                [("pe_fk1",4,1),("pe_sl1",14,1)],
+                "Promoted aerial units assault the walls from above!"),
             ReinforcementWave(7, FACTION_ENEMY,
-                [("e_gen2",8,0),("e_gen2",10,0)],
-                "Heavy general units move to breach the final gate!"),
+                [("pe_gen2",8,0),("pe_gg1",10,0)],
+                "Great Generals move to breach the final gate!"),
         ]
     ),
 
@@ -890,27 +1092,28 @@ CHAPTERS = [
         player_units=[
             ("ieyasu",5,14), ("tadakatsu",4,14), ("naomasa",6,14),
             ("hanzo",5,13), ("kanbei",6,13), ("ina",7,14),
-            ("oda_cav1",4,13), ("oda_arch1",6,12), ("oda_gun1",7,13),
-            ("oda_gun2",5,12), ("toshiie",8,14),
+            ("toshiie",8,14),
         ],
         enemy_units=[
+            # Ch18 — Sekigahara: fully promoted enemies, lv12-14
             ("mitsunari",11,0), ("otani",9,0), ("konishi",13,0),
-            ("e_sam1",10,1), ("e_sam2",12,1), ("e_ash1",9,2),
-            ("e_ash2",13,2), ("e_cav1",8,1), ("e_cav2",14,1),
-            ("e_gen1",11,2), ("e_arch1",10,3), ("e_arch2",12,3),
-            ("yoshihiro",16,7), ("toyohisa",17,8), ("e_berz1",15,8),
+            ("pe_ron2",10,1), ("pe_hat2",12,1), ("pe_lc2",9,2),
+            ("pe_nc2",13,2), ("pe_gk1",8,1), ("pe_gk2",14,1),
+            ("pe_gen1",11,2), ("pe_fk1",10,3), ("pe_sl1",12,3),
+            ("yoshihiro",16,7), ("toyohisa",17,8), ("pe_wl1",15,8),
             ("masamune",19,7), ("shigezane",18,8),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[18],
+        deploy_limit=12,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
-                [("e_hat1",10,0),("e_hat1",12,0),("e_wy1",8,0)],
-                "Western coalition elites advance under Mitsunari's command!"),
+                [("pe_hat2",10,0),("pe_hat2",12,0),("pe_sl1",8,0)],
+                "Promoted western coalition elites advance under Mitsunari!"),
             ReinforcementWave(4, FACTION_ALLY,
-                [("yukimura",5,14),("nobuyuki",6,14)],  # Sanada split — Yukimura can appear
+                [("yukimura",5,14),("nobuyuki",6,14)],
                 "Sanada troops have decided their allegiance! They join Ieyasu!"),
             ReinforcementWave(6, FACTION_ENEMY,
-                [("e_berz2",15,7),("e_wy2",17,6)],
+                [("pe_wl2",15,7),("pe_dk1",17,6)],
                 "Shimazu Yoshihiro makes his legendary last charge!"),
         ],
         seize_unit="ieyasu"
@@ -939,29 +1142,30 @@ CHAPTERS = [
             "siege fails. Hideyori's cause lives another season."
         ),
         objective=OBJ_SEIZE,
-        objective_detail="Breach the outer defenses. Seize the outer gate (8-9, 8).",
+        objective_detail="Breach the outer defenses. Seize the outer gate (8-9, 8). Four commanders defend: Hideyori, Yukimura, Otani Yoshitsugu, and Konishi Yukinaga.",
         player_units=[
             ("ieyasu",10,15), ("tadakatsu",9,15), ("naomasa",8,15),
             ("ina",11,15), ("kanbei",10,14), ("hanzo",9,14),
-            ("oda_gun1",8,14), ("oda_gun2",11,14), ("oda_arch1",9,13),
-            ("oda_cav1",11,13), ("toshiie",7,15),
+            ("toshiie",7,15),
         ],
         enemy_units=[
+            # Ch19 — Osaka Winter: 4 bosses + promoted forces, lv13-15
             ("hideyori",9,8), ("sanada_yukimura_late",8,9),
-            ("otani",10,9), ("konishi",7,9),
-            ("e_sam1",7,7), ("e_sam2",11,7), ("e_gen1",8,7),
-            ("e_gen2",10,7), ("e_ash1",7,8), ("e_ash2",11,8),
-            ("e_arch1",6,9), ("e_arch2",12,9), ("e_spear1",8,10),
-            ("e_spear2",10,10), ("e_wy1",6,6), ("e_wy2",12,6),
+            ("otani",10,9), ("konishi",7,9), ("matahachi",9,10),
+            ("pe_ron2",7,7), ("pe_hat2",11,7), ("pe_gen2",8,7),
+            ("pe_gg1",10,7), ("pe_wl1",7,8), ("pe_nc2",11,8),
+            ("pe_fk2",6,9), ("pe_sl2",12,9), ("pe_lc2",8,10),
+            ("pe_gk2",10,10), ("pe_dk1",6,6), ("pe_sr1",12,6),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[19],
+        deploy_limit=13,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
-                [("e_ron1",8,6),("e_ron2",10,6),("e_ron3",9,5)],
-                "Ronin defenders rush from the inner castle walls!"),
+                [("pe_ron2",8,6),("pe_ron2",10,6),("pe_ron1",9,5)],
+                "Promoted ronin defenders rush from the inner castle walls!"),
             ReinforcementWave(5, FACTION_ENEMY,
-                [("e_berz1",7,8),("e_berz2",11,8)],
-                "Desperate defenders charge with suicidal ferocity!"),
+                [("pe_wl1",7,8),("pe_wl2",11,8)],
+                "Warlords charge with suicidal ferocity from the walls!"),
             ReinforcementWave(7, FACTION_ALLY,
                 [("yukimura",10,15),("nobuyuki",9,15)],
                 "Wait — this is wrong. The Sanada are here... but whose side?"),
@@ -999,26 +1203,27 @@ CHAPTERS = [
         player_units=[
             ("ieyasu",11,17), ("tadakatsu",10,17), ("naomasa",12,17),
             ("ina",9,17), ("hanzo",11,16), ("kanbei",10,16),
-            ("oda_gun1",9,16), ("oda_gun2",12,16), ("oda_arch1",10,15),
-            ("oda_cav1",12,15), ("toshiie",8,17), ("magoichi",13,17),
+            ("toshiie",8,17), ("magoichi",13,17),
         ],
         enemy_units=[
+            # Ch20 — Final Battle: max-level promoted enemies, lv14-16
             ("hideyori",9,10), ("sanada_yukimura_late",9,11),
-            ("e_sam1",7,9), ("e_sam2",11,9), ("e_gen2",8,9),
-            ("e_gen2",10,9), ("e_ash1",7,10), ("e_ash2",11,10),
-            ("e_spear1",8,12), ("e_spear2",10,12), ("e_ron1",6,11),
-            ("e_ron2",12,11), ("e_ron3",9,13), ("e_berz1",8,13),
-            ("e_berz2",10,13), ("e_wy1",6,8), ("e_wy2",12,8),
-            ("e_ninja1",5,10), ("e_ninja2",13,10),
+            ("pe_ron2",7,9), ("pe_hat2",11,9), ("pe_gg1",8,9),
+            ("pe_gg1",10,9), ("pe_wl2",7,10), ("pe_gk2",11,10),
+            ("pe_lc2",8,12), ("pe_nc2",10,12), ("pe_ron2",6,11),
+            ("pe_sr2",12,11), ("pe_ron2",9,13), ("pe_wl2",8,13),
+            ("pe_wl1",10,13), ("pe_dk2",6,8), ("pe_dk1",12,8),
+            ("pe_sr1",5,10), ("pe_sr2",13,10),
         ],
         ally_units=[], map_builder=MAP_BUILDERS[20],
+        deploy_limit=14,
         reinforcements=[
             ReinforcementWave(3, FACTION_ENEMY,
-                [("e_hat1",8,8),("e_hat1",10,8),("e_hat1",9,7)],
-                "The final Toyotomi warriors converge on the keep!"),
+                [("pe_hat2",8,8),("pe_hat2",10,8),("pe_hat2",9,7)],
+                "The final Toyotomi elite warriors converge on the keep!"),
             ReinforcementWave(4, FACTION_ENEMY,
-                [("e_berz2",7,9),("e_berz2",11,9)],
-                "Berserker ronin — with nothing left to lose — charge!"),
+                [("pe_wl2",7,9),("pe_wl2",11,9)],
+                "Warlords — with nothing left to lose — make their last charge!"),
             ReinforcementWave(6, FACTION_ALLY,
                 [("yukimura",10,17),("nobuyuki",9,17)],
                 "Former enemies rally to end the war at last."),
