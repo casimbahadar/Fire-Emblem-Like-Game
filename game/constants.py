@@ -737,6 +737,7 @@ CLASS_DATA = {
 # ─── Game states ──────────────────────────────────────────────────────────────
 STATE_TITLE         = "title"
 STATE_MODE_SELECT   = "mode_select"
+STATE_PROLOGUE      = "prologue"       # historical Sengoku era intro (once per new game)
 STATE_SCENE         = "scene"          # pre-battle character dialogue cutscene
 STATE_CHAPTER_INTRO = "chapter_intro"
 STATE_PREP          = "prep"           # pre-battle preparation (deploy / shop / inventory / map)
@@ -758,19 +759,26 @@ PREP_TAB_INVENTORY = 2
 PREP_TAB_MAP       = 3
 PREP_TAB_NAMES     = ["Deploy", "Shop", "Inventory", "Map Preview"]
 
-# Shop mercenary prices (gold cost)
+# Shop mercenary prices (gold cost) — balanced for 300 ryo start
 SHOP_PRICES = {
-    "merc_ashigaru":  50,
-    "merc_spearman":  60,
-    "merc_archer":    70,
+    "merc_ashigaru":  40,   # cheap foot soldier
+    "merc_spearman":  50,
+    "merc_archer":    60,
+    "merc_monk":      65,   # healer
+    "merc_gunner":    75,
+    "merc_ninja":     80,
     "merc_samurai":   90,
-    "merc_cavalry":  120,
-    "merc_ninja":    100,
-    "merc_monk":      80,
-    "merc_gunner":    95,
+    "merc_cavalry":  110,   # most expensive — mounted mobility
 }
-STARTING_GOLD = 300      # gold player starts chapter 1 with
-GOLD_PER_CHAPTER = 150   # bonus gold awarded at chapter clear
+STARTING_GOLD   = 300    # 300 ryo ≈ 3 cheap mercs at game start
+GOLD_PER_CHAPTER = 150   # base gold at chapter clear
+SIDE_OBJ_GOLD_SMALL  =  80   # minor side objective reward
+SIDE_OBJ_GOLD_MEDIUM = 150   # mid-tier side objective reward
+SIDE_OBJ_GOLD_LARGE  = 250   # major / chain-completion reward
+
+# Deployment modes
+DEPLOY_FORCED = "forced"   # chapter pre-selects required units
+DEPLOY_FREE   = "free"     # player picks any unlocked units up to deploy_limit
 
 # Cursor / selection modes
 CURSOR_FREE     = "free"

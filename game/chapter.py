@@ -9,6 +9,33 @@ from game.map import MAP_BUILDERS
 from game.scene_dialogs import CHAPTER_SCENES
 
 
+class SideObjective:
+    """
+    An optional in-chapter objective that rewards gold and/or unlocks
+    special characters. Types:
+      "kill_unit"    — defeat a specific enemy unit (target = unit_id)
+      "visit_tile"   — any player unit steps on tile (target = (x,y))
+      "protect_unit" — named unit survives chapter (target = unit_id)
+      "clear_turns"  — clear chapter within N turns (target = int)
+      "recruit_unit" — recruit a specific unit (target = unit_id)
+      "no_casualties"— finish chapter with no player casualties
+    Chain requirements: if `requires` is a list of obj_ids, this objective
+    only activates once all required objectives (from past chapters) are done.
+    """
+    def __init__(self, obj_id, description, obj_type, target,
+                 gold_reward=0, unlock_unit=None, requires=None, detail=""):
+        self.obj_id       = obj_id
+        self.description  = description
+        self.obj_type     = obj_type
+        self.target       = target
+        self.gold_reward  = gold_reward
+        self.unlock_unit  = unlock_unit   # unit_id to add to player roster
+        self.requires     = requires or []
+        self.detail       = detail
+        self.completed    = False
+        self.failed       = False
+
+
 class ReinforcementWave:
     def __init__(self, turn, faction, unit_defs, message="Reinforcements arrive!",
                  edge="south"):

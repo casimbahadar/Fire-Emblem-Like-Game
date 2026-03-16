@@ -227,14 +227,30 @@ class Unit:
         self.level += 1
         g = self.growths
         gains = {}
-        if random.randint(1,100) <= g.get("hp",  50): self.max_hp += 1; self.hp += 1; gains["HP"] = 1
-        if random.randint(1,100) <= g.get("str", 40): self.str_  += 1; gains["STR"] = 1
-        if random.randint(1,100) <= g.get("mag", 30): self.mag   += 1; gains["MAG"] = 1
-        if random.randint(1,100) <= g.get("skl", 45): self.skl   += 1; gains["SKL"] = 1
-        if random.randint(1,100) <= g.get("spd", 45): self.spd   += 1; gains["SPD"] = 1
-        if random.randint(1,100) <= g.get("lck", 35): self.lck   += 1; gains["LCK"] = 1
-        if random.randint(1,100) <= g.get("def", 35): self.def_  += 1; gains["DEF"] = 1
-        if random.randint(1,100) <= g.get("res", 25): self.res   += 1; gains["RES"] = 1
+
+        def _roll(key, default, lo, hi):
+            """Roll a stat gain. Rate is clamped to [lo, hi].
+            Rates above 100 guarantee at least +1 and give a (rate-100)% chance of +2."""
+            rate = max(lo, min(hi, g.get(key, default)))
+            if rate <= 100:
+                return 1 if random.randint(1, 100) <= rate else 0
+            else:
+                # Guaranteed +1; extra +1 on (rate-100)% chance
+                return 1 + (1 if random.randint(1, 100) <= (rate - 100) else 0)
+
+        # HP: 60–120%
+        hp_gain = _roll("hp",  70, 60, 120)
+        if hp_gain:
+            self.max_hp += hp_gain; self.hp += hp_gain; gains["HP"] = hp_gain
+        # All other stats: 20–70%
+        if _roll("str", 40, 20, 70): self.str_  += 1; gains["STR"] = 1
+        if _roll("mag", 30, 20, 70): self.mag   += 1; gains["MAG"] = 1
+        if _roll("skl", 45, 20, 70): self.skl   += 1; gains["SKL"] = 1
+        if _roll("spd", 45, 20, 70): self.spd   += 1; gains["SPD"] = 1
+        if _roll("lck", 35, 20, 70): self.lck   += 1; gains["LCK"] = 1
+        if _roll("def", 35, 20, 70): self.def_  += 1; gains["DEF"] = 1
+        if _roll("res", 25, 20, 70): self.res   += 1; gains["RES"] = 1
+
         self._last_level_gains = gains
         return gains
 
@@ -1707,8 +1723,9 @@ def create_unit_roster():
 # Mercenary shop units — weaker than named characters, buyable in prep screen
 # ─────────────────────────────────────────────────────────────────────────────
 
-_MERC_GROWTH = {"hp": 30, "str": 30, "mag": 20, "skl": 30,
-                "spd": 30, "lck": 20, "def": 28, "res": 18}
+# Mercs have low-but-valid growth rates (floor enforced by _level_up clamping)
+_MERC_GROWTH = {"hp": 65, "str": 30, "mag": 20, "skl": 30,
+                "spd": 30, "lck": 20, "def": 28, "res": 20}
 
 def create_mercenary(merc_id, chapter_index=0):
     """
