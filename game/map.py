@@ -518,37 +518,42 @@ def make_chapter15_map():
 # ─── MAP 16: Siege of Odawara Castle ─────────────────────────────────────────
 def make_chapter16_map():
     # 20 columns x 18 rows
-    # Peninsula: sea on east (cols 15-19), mountains on west (cols 0-1)
-    # Narrow land approach from south (rows 15-17)
-    # THREE concentric castle rings with moat (river) between outer & middle
-    # Outermost wall row 4/row 13; middle wall row 6/row 11; inner keep row 8
-    # Town area between outer and middle rings; central keep top-center
+    # Odawara sits on a peninsula: sea (S) on east cols 14-19, mountains/peaks
+    # on west cols 0-2, narrow land corridor approaching from south (rows 14-17)
+    # THREE concentric rings:
+    #   Outermost wall: row 12 / cols 3-13, gate at col 8 (S approach)
+    #   Outer moat: row 11 (river tiles) bridged at cols 5 and 10
+    #   Middle wall: row 8 / cols 3-13, gates at cols 6 and 10
+    #   Inner moat: row 6 (river) bridged at col 8
+    #   Inner keep: rows 1-4 / cols 4-12 — main tower at row 2
+    # Town between outer and middle walls (rows 9-10)
+    # Tokugawa/Hideyoshi siege position: forts at south rows 15-16
     tiles = [
         #0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19
-        [M,  M,  K,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  S,  S,  S,  S,  S,  S,  S],  # 0  keep + sea N
-        [M,  M,  M,  C,  T,  D,  D,  C,  C,  C,  D,  D,  T,  C,  S,  S,  S,  S,  S,  S],  # 1  inner keep top
-        [M,  M,  F,  C,  D,  P,  P,  C,  C,  C,  P,  P,  D,  C,  S,  S,  S,  S,  S,  S],  # 2  keep interior
-        [M,  F,  F,  C,  D,  P,  P,  T,  C,  T,  P,  P,  D,  C,  S,  S,  S,  S,  S,  S],  # 3  keep inner ward
-        [M,  F,  P,  G,  R,  R,  R,  R,  R,  R,  R,  R,  R,  G,  S,  S,  S,  S,  S,  S],  # 4  inner moat + W gate
-        [M,  F,  P,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  S,  S,  S,  S,  S,  S],  # 5  middle wall N
-        [M,  P,  P,  C,  V,  D,  D,  G,  D,  G,  D,  D,  V,  C,  S,  S,  S,  S,  S,  S],  # 6  middle N gate + town
-        [M,  P,  P,  C,  D,  V,  P,  P,  P,  P,  P,  V,  D,  C,  S,  S,  S,  S,  S,  S],  # 7  town district
-        [M,  P,  P,  C,  D,  P,  V,  U,  U,  U,  V,  P,  D,  C,  S,  S,  S,  S,  S,  S],  # 8  town interior
-        [M,  P,  P,  C,  D,  V,  P,  P,  P,  P,  P,  V,  D,  C,  S,  S,  S,  S,  S,  S],  # 9  town district
-        [M,  P,  P,  C,  V,  D,  D,  G,  D,  G,  D,  D,  V,  C,  S,  S,  S,  S,  S,  S],  # 10 middle S gate + town
-        [M,  F,  P,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  C,  S,  S,  S,  S,  S,  S],  # 11 middle wall S
-        [M,  F,  P,  R,  R,  R,  R,  R,  R,  R,  R,  R,  R,  R,  S,  S,  S,  S,  S,  S],  # 12 outer moat (river)
-        [M,  F,  B,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  B,  S,  S,  S,  S,  S,  S],  # 13 moat bridges
-        [M,  M,  C,  C,  C,  G,  D,  D,  D,  D,  D,  G,  C,  C,  S,  S,  S,  S,  S,  S],  # 14 outer wall + S gate
-        [M,  M,  F,  P,  P,  P,  D,  P,  P,  P,  D,  P,  P,  F,  P,  P,  S,  S,  S,  S],  # 15 southern approach
-        [M,  M,  M,  F,  P,  P,  D,  P,  T,  T,  D,  P,  P,  F,  P,  P,  P,  S,  S,  S],  # 16 Hideyoshi siege camps
-        [M,  M,  M,  M,  F,  F,  D,  F,  F,  F,  D,  F,  F,  M,  P,  P,  P,  P,  S,  S],  # 17 S forest entry
+        [M,  K,  K,  M,  C,  C,  C,  C,  C,  C,  C,  C,  M,  S,  S,  S,  S,  S,  S,  S],  # 0  keep pinnacle + sea N
+        [M,  M,  K,  C,  C,  T,  D,  D,  C,  D,  D,  T,  C,  S,  S,  S,  S,  S,  S,  S],  # 1  inner keep top — towers
+        [M,  M,  F,  C,  D,  P,  P,  C,  C,  C,  P,  P,  C,  S,  S,  S,  S,  S,  S,  S],  # 2  keep interior (seize)
+        [M,  M,  F,  C,  D,  P,  T,  C,  C,  C,  T,  P,  C,  S,  S,  S,  S,  S,  S,  S],  # 3  inner ward — shrine
+        [M,  F,  P,  C,  C,  C,  C,  C,  G,  C,  C,  C,  C,  S,  S,  S,  S,  S,  S,  S],  # 4  inner N wall + gate
+        [M,  F,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  P,  S,  S,  S,  S,  S,  S,  S],  # 5  inner bailey yard
+        [M,  F,  P,  R,  R,  R,  R,  R,  B,  R,  R,  R,  R,  S,  S,  S,  S,  S,  S,  S],  # 6  inner moat (river) + bridge
+        [M,  F,  P,  C,  C,  C,  C,  G,  D,  G,  C,  C,  C,  S,  S,  S,  S,  S,  S,  S],  # 7  middle wall N + twin gates
+        [M,  P,  P,  C,  V,  D,  D,  P,  D,  P,  D,  D,  C,  S,  S,  S,  S,  S,  S,  S],  # 8  town N row — market
+        [M,  P,  P,  C,  D,  V,  U,  P,  P,  P,  U,  V,  C,  S,  S,  S,  S,  S,  S,  S],  # 9  town center — ruins/shops
+        [M,  P,  P,  C,  V,  D,  D,  P,  D,  P,  D,  D,  C,  S,  S,  S,  S,  S,  S,  S],  # 10 town S row — market
+        [M,  F,  P,  C,  C,  C,  C,  G,  D,  G,  C,  C,  C,  S,  S,  S,  S,  S,  S,  S],  # 11 middle wall S + twin gates
+        [M,  F,  P,  R,  R,  B,  R,  R,  R,  R,  B,  R,  R,  S,  S,  S,  S,  S,  S,  S],  # 12 outer moat + two bridges
+        [M,  F,  P,  P,  C,  C,  C,  C,  C,  C,  C,  C,  P,  S,  S,  S,  S,  S,  S,  S],  # 13 outer wall
+        [M,  M,  F,  P,  C,  G,  D,  D,  D,  D,  G,  C,  P,  P,  P,  S,  S,  S,  S,  S],  # 14 outer S wall + main gates
+        [M,  M,  M,  F,  P,  P,  D,  T,  P,  T,  D,  P,  F,  P,  P,  P,  S,  S,  S,  S],  # 15 siege approach — Hideyoshi forts
+        [M,  M,  M,  M,  F,  P,  D,  P,  P,  P,  D,  P,  P,  F,  P,  P,  P,  P,  S,  S],  # 16 southern forest road
+        [M,  M,  M,  M,  M,  F,  F,  D,  F,  F,  D,  F,  F,  M,  P,  P,  P,  P,  S,  S],  # 17 S forest / entry
     ]
     gmap = GameMap(20, 18, tiles, name="Odawara Castle — The Grand Siege")
-    gmap.seize_points   = [(7, 2), (8, 2), (9, 2)]      # inner keep / main tower
-    gmap.gate_points    = [(3, 4), (7, 6), (9, 6), (7, 10), (9, 10), (5, 14), (11, 14)]
-    gmap.fort_points    = [(7, 3), (9, 3), (8, 16), (9, 16)]
-    gmap.village_points = [(4, 6), (12, 6), (5, 7), (11, 7), (5, 9), (11, 9), (4, 10), (12, 10)]
+    gmap.seize_points   = [(7, 2), (8, 2), (9, 2)]          # inner keep / main tower
+    gmap.gate_points    = [(8, 4), (7, 7), (9, 7), (7, 11), (9, 11), (5, 14), (10, 14)]
+    gmap.fort_points    = [(5, 1), (11, 1), (6, 3), (10, 3), (7, 15), (9, 15)]
+    gmap.village_points = [(4, 8), (12, 8), (5, 9), (11, 9), (4, 10), (12, 10)]
     return gmap
 
 
