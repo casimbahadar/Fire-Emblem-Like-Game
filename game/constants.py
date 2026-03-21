@@ -1,7 +1,7 @@
-"""
+'''
 Game constants for Sengoku Tactics: Age of the Warring States
 Inspired by Fire Emblem and Samurai Warriors
-"""
+'''
 
 # Screen settings
 SCREEN_WIDTH  = 1024

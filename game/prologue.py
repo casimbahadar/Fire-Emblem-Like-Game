@@ -1,4 +1,4 @@
-"""
+'''
 Prologue dialogue for Sengoku Tactics: Age of the Warring States.
 A multi-slide historical intro explaining Japan's Sengoku era that runs
 once when the player starts a new game, just before the tutorial or Chapter 1.
@@ -6,7 +6,7 @@ once when the player starts a new game, just before the tutorial or Chapter 1.
 Each slide: (speaker_key, display_name, text)
 speaker_key controls portrait colour (uses PORTRAIT_COLORS from scene_dialogs).
 Use speaker_key "" for a narrator/omniscient voice.
-"""
+'''
 
 PROLOGUE_SLIDES = [
     # ── Slide 1: The Land ─────────────────────────────────────────────────────

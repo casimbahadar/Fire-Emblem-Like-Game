@@ -1,8 +1,8 @@
-"""
+'''
 Skippable Tutorial System for Sengoku Tactics.
 Chapter 0 — "The Way of the Warrior"
 Step-by-step Fire Emblem-style tutorial with touch/keyboard support.
-"""
+'''
 from game.constants import *
 from game.map import GameMap
 
@@ -317,18 +317,18 @@ class TutorialManager:
         self.active  = False
 
     def advance(self):
-        """Move to next stage."""
+        '''Move to next stage.'''
         self.stage_idx += 1
         if self.stage_idx >= len(TUTORIAL_STAGES):
             self.active = False
 
     def check_completion(self, gs, event_type=None):
-        """
+        '''
         Call every frame. Pass event_type for action events:
         "any_key", "cursor_at_highlight", "unit_selected", "unit_moved",
         "enemy_defeated", "heal_used", "unit_recruited", "stat_sheet_opened",
         "turn_ended", "chapter_seize"
-        """
+        '''
         if not self.active or self.current_stage is None:
             return False
         stage = self.current_stage

@@ -1,7 +1,7 @@
-"""
+'''
 Combat resolution for Sengoku Tactics
 Two-RN hit system, doubles, crits, weapon triangle, anti-type bonuses.
-"""
+'''
 import random
 from game.constants import *
 from game.weapon import WEAPON_STAFF

@@ -1,4 +1,4 @@
-"""
+'''
 Pre-battle scene dialogs for each chapter.
 Each entry is a list of (speaker, line) tuples.
 Speaker names are used by the renderer to colour portrait boxes and
@@ -14,7 +14,7 @@ Narrative arc:
 
 Portrait colours are kept here so the renderer can paint them without
 needing the full unit roster.
-"""
+'''
 
 # Speaker → (R, G, B) portrait background tint
 PORTRAIT_COLORS = {
