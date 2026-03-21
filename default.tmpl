@@ -148,11 +148,29 @@ async def custom_site():
     # Import game as a module (not __main__) so asyncio.run guard is skipped,
     # then directly await main() in the existing event loop — avoids nested
     # asyncio.run errors in the WASM runtime.
-    import importlib.util as _ilu
-    _spec = _ilu.spec_from_file_location("main", str(main_path))
-    _mod = _ilu.module_from_spec(_spec)
-    _spec.loader.exec_module(_mod)
-    await _mod.main()
+    try:
+        import importlib.util as _ilu
+        _spec = _ilu.spec_from_file_location("main", str(main_path))
+        _mod = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        await _mod.main()
+    except Exception as _e:
+        import traceback
+        _tb = traceback.format_exc()
+        print("GAME LAUNCH ERROR:", _tb)
+        # Show error on screen so it's visible without opening browser console
+        screen2 = pygame.display.set_mode([800, 400])
+        screen2.fill((20, 0, 0))
+        _ef = pygame.font.Font(None, 22)
+        _y = 10
+        for _line in _tb.splitlines():
+            screen2.blit(_ef.render(_line[:90], True, (255, 80, 80)), (10, _y))
+            _y += 22
+            if _y > 380:
+                break
+        pygame.display.flip()
+        while True:
+            await asyncio.sleep(1)
 
 
 
