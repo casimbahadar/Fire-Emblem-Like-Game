@@ -35,39 +35,19 @@ jobs:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
         run: |
-          # Replace """ with ''' in game files — both are valid Python triple-quote strings,
-          # but pygbag's html_embed wraps files in """...""" which breaks if content has """.
-          find . -name "*.py" -not -path "./build/*" \
-            -exec sed -i "s/\"\"\"/'''/g" {} \;
+          # Standard pygbag APK build — no --html flag.
+          # pygbag packages all Python into an APK (zip), downloads
+          # the cdn/0.9.3 template, and writes build/web/index.html.
+          # The browser runtime (cdn/0.9.3/pythons.js) then downloads
+          # the APK and runs main.py — confirmed working in screenshot.
+          pygbag --build .
 
-          # --html embeds all Python source into a single HTML file.
-          # Use pygbag's own default CDN (cdn/0.9.3) — it matches the installed
-          # pygbag version and supports the --html embedded-Python mode.
-          # archives/0.9 is an older CDN that does NOT support embedded Python.
-          pygbag --build --html . &
-          PYGBAG_PID=$!
+          echo "=== build/web contents ==="
+          ls -la build/web/
 
-          for i in $(seq 1 60); do
-            if ls build/web/*.html 2>/dev/null | grep -q .; then
-              echo "HTML generated after ${i}s"
-              break
-            fi
-            sleep 1
-          done
-
-          kill $PYGBAG_PID 2>/dev/null || true
-          wait $PYGBAG_PID 2>/dev/null || true
-
-          # --html generates <appname>.html; rename to index.html for GitHub Pages
-          HTML_FILE=$(ls build/web/*.html 2>/dev/null | grep -v 'build/web/index.html' | head -1)
-          if [ -n "$HTML_FILE" ]; then
-            mv "$HTML_FILE" build/web/index.html
-            echo "index.html created from $HTML_FILE — first 3 lines:"
-            head -3 build/web/index.html
-          elif [ -f build/web/index.html ]; then
-            echo "index.html already exists"
-          else
-            echo "ERROR: no .html generated"; ls -la build/web/; exit 1
+          if [ ! -f build/web/index.html ]; then
+            echo "ERROR: index.html not generated"
+            exit 1
           fi
 
       - name: Upload Pages artifact
