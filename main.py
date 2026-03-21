@@ -797,4 +797,5 @@ def _render_heal_overlay(screen, font_sm, font_md, targets, cursor):
                 (box.x+12,y+4))
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
