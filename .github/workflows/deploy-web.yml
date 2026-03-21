@@ -56,11 +56,14 @@ jobs:
           kill $PYGBAG_PID 2>/dev/null || true
           wait $PYGBAG_PID 2>/dev/null || true
 
-          HTML_FILE=$(ls build/web/*.html 2>/dev/null | head -1)
+          # --html generates <appname>.html; rename to index.html for GitHub Pages
+          HTML_FILE=$(ls build/web/*.html 2>/dev/null | grep -v 'build/web/index.html' | head -1)
           if [ -n "$HTML_FILE" ]; then
-            cp "$HTML_FILE" build/web/index.html
-            echo "index.html created — first 3 lines:"
+            mv "$HTML_FILE" build/web/index.html
+            echo "index.html created from $HTML_FILE — first 3 lines:"
             head -3 build/web/index.html
+          elif [ -f build/web/index.html ]; then
+            echo "index.html already exists"
           else
             echo "ERROR: no .html generated"; ls -la build/web/; exit 1
           fi
