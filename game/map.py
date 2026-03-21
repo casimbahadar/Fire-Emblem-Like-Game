@@ -1,6 +1,6 @@
-"""
+'''
 Map/Grid system for Sengoku Tactics
-"""
+'''
 import heapq
 from game.constants import *
 

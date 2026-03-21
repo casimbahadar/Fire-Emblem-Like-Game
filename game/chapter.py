@@ -1,7 +1,7 @@
-"""
+'''
 Chapter definitions for Sengoku Tactics: Age of the Warring States
 20 chapters with Samurai Warriors-inspired narratives, reinforcements, recruits.
-"""
+'''
 import copy
 from game.constants import *
 from game.unit import create_unit_roster
@@ -10,7 +10,7 @@ from game.scene_dialogs import CHAPTER_SCENES
 
 
 class SideObjective:
-    """
+    '''
     An optional in-chapter objective that rewards gold and/or unlocks
     special characters. Types:
       "kill_unit"    — defeat a specific enemy unit (target = unit_id)
@@ -21,7 +21,7 @@ class SideObjective:
       "no_casualties"— finish chapter with no player casualties
     Chain requirements: if `requires` is a list of obj_ids, this objective
     only activates once all required objectives (from past chapters) are done.
-    """
+    '''
     def __init__(self, obj_id, description, obj_type, target,
                  gold_reward=0, unlock_unit=None, requires=None, detail=""):
         self.obj_id       = obj_id
@@ -81,7 +81,7 @@ class Chapter:
         self.scene_dialog = CHAPTER_SCENES[idx] if 0 <= idx < len(CHAPTER_SCENES) else []
 
     def build(self, roster):
-        """Instantiate chapter. Returns (game_map, player_units, enemy_units, ally_units, reinf_waves)."""
+        '''Instantiate chapter. Returns (game_map, player_units, enemy_units, ally_units, reinf_waves).'''
         gmap = self.map_builder()
 
         def place(unit_defs, faction):

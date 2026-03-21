@@ -1,7 +1,7 @@
-"""
+'''
 Game state management for Sengoku Tactics
 Includes: recruit mechanic, reinforcement waves, flying/mounted movement
-"""
+'''
 import copy
 from game.constants import *
 from game.chapter import CHAPTERS
@@ -199,11 +199,11 @@ class GameState:
         self.cursor_y = 0
 
     def confirm_prep_and_start(self):
-        """
+        '''
         Called when the player hits 'Battle!' on the prep screen.
         Deploys selected named units + purchased mercs onto the map
         using the chapter's player_unit_defs placement data.
-        """
+        '''
         ch = self.current_chapter
         import copy as _copy
 
@@ -436,7 +436,7 @@ class GameState:
         return targets
 
     def get_recruitable_adjacent(self, recruiter):
-        """Return list of adjacent enemy units that recruiter can talk to."""
+        '''Return list of adjacent enemy units that recruiter can talk to.'''
         targets = []
         for t in self.enemy_units + self.ally_units:
             if not t.alive or not t.can_recruit or t.recruited:
@@ -451,7 +451,7 @@ class GameState:
     # ── Actions ───────────────────────────────────────────────────────────────
 
     def check_and_trigger_dialog(self, attacker, defender):
-        """Check for pre-combat dialog. Returns True if dialog was triggered."""
+        '''Check for pre-combat dialog. Returns True if dialog was triggered.'''
         lines = get_pre_combat_dialog(attacker, defender)
         if lines:
             self.pending_dialog     = lines
@@ -462,7 +462,7 @@ class GameState:
         return False
 
     def advance_dialog(self):
-        """Advance dialog by one line. Returns True if dialog is complete."""
+        '''Advance dialog by one line. Returns True if dialog is complete.'''
         if self.pending_dialog is None:
             return True
         self.pending_dialog_idx += 1
@@ -509,7 +509,7 @@ class GameState:
         return amount
 
     def recruit_unit(self, recruiter, target):
-        """Recruit a target unit into the player army."""
+        '''Recruit a target unit into the player army.'''
         if not target.can_recruit:
             return False
         if "any" not in target.recruit_by and recruiter.unit_id not in target.recruit_by:
@@ -573,11 +573,11 @@ class GameState:
     # ── Side Objectives ───────────────────────────────────────────────────────
 
     def check_side_objectives(self, event_type, **kwargs):
-        """
+        '''
         Call after relevant game events. event_type is one of:
           "kill_unit", "visit_tile", "recruit_unit", "chapter_end"
         kwargs carry event-specific data.
-        """
+        '''
         for so in self.active_side_objectives:
             if so.completed or so.failed:
                 continue

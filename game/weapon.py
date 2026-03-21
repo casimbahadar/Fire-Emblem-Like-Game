@@ -1,6 +1,6 @@
-"""
+'''
 Weapon definitions for Sengoku Tactics
-"""
+'''
 import copy
 from game.constants import *
 
@@ -201,7 +201,7 @@ WEAPONS = {
 
 
 def get_weapon(weapon_id):
-    """Return a fresh copy of a weapon by id."""
+    '''Return a fresh copy of a weapon by id.'''
     w = WEAPONS.get(weapon_id)
     if w is None:
         raise KeyError(f"Unknown weapon id: {weapon_id}")

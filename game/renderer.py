@@ -1,9 +1,9 @@
-"""
+'''
 Renderer for Sengoku Tactics
 Includes: map, units, overlays, UI panel, combat preview,
           stat sheet (FE-style), boss dialog, tutorial overlay,
           touch/mouse button controls, recruit dialog.
-"""
+'''
 import pygame
 from game.constants import *
 from game.tutorial import TUTORIAL_STAGES
@@ -47,7 +47,7 @@ class Renderer:
 
     @property
     def ts(self):
-        """Current tile size in pixels (zoom-adjusted)."""
+        '''Current tile size in pixels (zoom-adjusted).'''
         return self._ZOOM_STEPS[self._zoom_idx]
 
     def zoom_in(self):
@@ -59,7 +59,7 @@ class Renderer:
             self._zoom_idx -= 1
 
     def _get_scaled_tile(self, terrain, ts):
-        """Return terrain surface scaled to ts×ts, cached."""
+        '''Return terrain surface scaled to ts×ts, cached.'''
         if ts not in self._scaled_tile_cache:
             self._scaled_tile_cache[ts] = {}
         cache = self._scaled_tile_cache[ts]
@@ -130,7 +130,7 @@ class Renderer:
         self.cam_y = max(0, min(cy - vh//2, gmap.height - vh))
 
     def clamp_camera(self, gmap):
-        """Clamp camera without centering (used after drag scroll)."""
+        '''Clamp camera without centering (used after drag scroll).'''
         ts = self.ts
         vw = self.map_rect.width  // ts
         vh = self.map_rect.height // ts
@@ -218,7 +218,7 @@ class Renderer:
 
     # ── Mode Select ───────────────────────────────────────────────────────────
     def _render_mode_select(self, gs):
-        """Difficulty + Deploy mode selection screen (two rows)."""
+        '''Difficulty + Deploy mode selection screen (two rows).'''
         from game.constants import DEPLOY_FORCED, DEPLOY_FREE
         # Background gradient
         for i in range(SCREEN_HEIGHT):
@@ -320,10 +320,10 @@ class Renderer:
 
     # ── Pre-battle Scene Dialog ───────────────────────────────────────────────
     def _render_scene(self, gs):
-        """
+        '''
         Visual-novel style scene: full dark background, left portrait box,
         speaker name bar, and dialogue text box at bottom — like Fire Emblem DS.
-        """
+        '''
         from game.scene_dialogs import PORTRAIT_COLORS
         ch  = gs.current_chapter
         idx = gs.scene_dialog_idx
@@ -729,12 +729,12 @@ class Renderer:
 
     # ── Boss Dialog ───────────────────────────────────────────────────────────
     def render_boss_dialog(self, lines, line_idx, unit_roster):
-        """
+        '''
         Render a multi-line cinematic boss dialog.
         lines: list of (speaker_id, text)
         line_idx: current line index
         unit_roster: dict id->Unit for portrait lookup
-        """
+        '''
         if not lines or line_idx >= len(lines):
             return
         speaker_id, text = lines[line_idx]
@@ -799,10 +799,10 @@ class Renderer:
 
     # ── Tutorial Overlay ──────────────────────────────────────────────────────
     def render_tutorial(self, tm, gs):
-        """
+        '''
         Render the tutorial stage overlay.
         tm: TutorialManager instance
-        """
+        '''
         stage = tm.current_stage
         if stage is None or not tm.active:
             return
@@ -1048,7 +1048,7 @@ class Renderer:
 
     # ── Pre-battle Preparation Screen ────────────────────────────────────────
     def _render_prep_screen(self, gs):
-        """Four-tab prep screen: Deploy | Shop | Inventory | Map Preview."""
+        '''Four-tab prep screen: Deploy | Shop | Inventory | Map Preview.'''
         W, H = SCREEN_WIDTH, SCREEN_HEIGHT
         ch = gs.current_chapter
         # Background gradient
@@ -1106,7 +1106,7 @@ class Renderer:
         self._blit_center(self.font_sm.render(hints, True, LIGHT_GREY), W//2, bar_y+18)
 
     def _render_prep_deploy(self, gs, y0, cur):
-        """Deploy tab: toggle named units in/out of the battle roster."""
+        '''Deploy tab: toggle named units in/out of the battle roster.'''
         ch = gs.current_chapter
         avail = gs.prep_available_units
         selected_ids = {u.unit_id for u in gs.prep_selected_units}
@@ -1150,7 +1150,7 @@ class Renderer:
         self.screen.blit(hint_surf, (x0, SCREEN_HEIGHT - 64))
 
     def _render_prep_shop(self, gs, y0, cur):
-        """Shop tab: hire mercenaries with gold."""
+        '''Shop tab: hire mercenaries with gold.'''
         from game.constants import SHOP_PRICES
         items = list(SHOP_PRICES.items())
         x0 = 16; row_h = 48
@@ -1208,7 +1208,7 @@ class Renderer:
                     f"{m.name}  Lv{m.level}", True, CREAM), (rx, my))
 
     def _render_prep_inventory(self, gs, y0, cur):
-        """Inventory tab: view equipped weapons of all deployed units."""
+        '''Inventory tab: view equipped weapons of all deployed units.'''
         units = gs.prep_selected_units + gs.prep_mercs
         x0 = 16; row_h = 56
         if not units:
@@ -1244,7 +1244,7 @@ class Renderer:
             (x0, SCREEN_HEIGHT - 60))
 
     def _render_prep_map(self, gs, y0):
-        """Map Preview tab: shows a zoomed-out view of the chapter map."""
+        '''Map Preview tab: shows a zoomed-out view of the chapter map.'''
         gmap = gs.game_map
         W = SCREEN_WIDTH; H = SCREEN_HEIGHT
         avail_h = H - y0 - 40
@@ -1290,7 +1290,7 @@ class Renderer:
 
     # ── Help Overlay ──────────────────────────────────────────────────────────
     def _render_help_overlay(self):
-        """Full-screen help reference overlay. Press ? or F1 to toggle."""
+        '''Full-screen help reference overlay. Press ? or F1 to toggle.'''
         W, H = SCREEN_WIDTH, SCREEN_HEIGHT
         ov = pygame.Surface((W, H), pygame.SRCALPHA)
         ov.fill((0, 0, 20, 230))
@@ -1411,7 +1411,7 @@ class Renderer:
 
     # ── Prologue ───────────────────────────────────────────────────────────────
     def _render_prologue(self, gs):
-        """Full-screen historical intro slides before Chapter 1."""
+        '''Full-screen historical intro slides before Chapter 1.'''
         from game.prologue import PROLOGUE_SLIDES, PROLOGUE_PORTRAIT_COLORS
         idx   = getattr(gs, 'prologue_idx', 0)
         total = len(PROLOGUE_SLIDES)

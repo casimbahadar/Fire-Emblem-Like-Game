@@ -1,8 +1,8 @@
-"""
+'''
 Unit definitions for Sengoku Tactics
 Inspired by Samurai Warriors characters — each unit has a personality archetype,
 iconic weapon, and Samurai Warriors-style bio flavor.
-"""
+'''
 import random
 import copy
 from game.constants import *
@@ -196,7 +196,7 @@ class Unit:
         return leveled
 
     def promote(self, new_class):
-        """Promote this unit to new_class (called from stat sheet). Applies bonuses and updates class data."""
+        '''Promote this unit to new_class (called from stat sheet). Applies bonuses and updates class data.'''
         if new_class not in PROMOTION_CHAINS.get(self.unit_class, []):
             return False   # invalid promotion choice
         bonuses = PROMOTION_BONUSES.get(new_class, {})
@@ -229,8 +229,8 @@ class Unit:
         gains = {}
 
         def _roll(key, default, lo, hi):
-            """Roll a stat gain. Rate is clamped to [lo, hi].
-            Rates above 100 guarantee at least +1 and give a (rate-100)% chance of +2."""
+            '''Roll a stat gain. Rate is clamped to [lo, hi].
+            Rates above 100 guarantee at least +1 and give a (rate-100)% chance of +2.'''
             rate = max(lo, min(hi, g.get(key, default)))
             if rate <= 100:
                 return 1 if random.randint(1, 100) <= rate else 0
@@ -1728,11 +1728,11 @@ _MERC_GROWTH = {"hp": 65, "str": 30, "mag": 20, "skl": 30,
                 "spd": 30, "lck": 20, "def": 28, "res": 20}
 
 def create_mercenary(merc_id, chapter_index=0):
-    """
+    '''
     Create a fresh buyable mercenary scaled to chapter number.
     Mercs are intentionally weaker than named player characters.
     chapter_index 0-19 gives a mild level bump (max +5 levels).
-    """
+    '''
     level = max(1, 1 + chapter_index // 4)   # lv1 ch1-3, lv2 ch4-7, etc.
     _MERC_DEFS = {
         "merc_ashigaru": ("Hired Ashigaru",   CLASS_ASHIGARU,   ["iron_yari",  "iron_tanto"],     (120, 100, 80)),

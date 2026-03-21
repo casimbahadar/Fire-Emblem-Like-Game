@@ -1,7 +1,7 @@
-"""
+'''
 Boss battle pre-combat dialogs and unit vs unit rivalries.
 Samurai Warriors-style: dramatic speeches before important fights.
-"""
+'''
 
 # ── Boss pre-battle dialogs ───────────────────────────────────────────────────
 # Keyed by boss unit_id. Each entry is a list of (speaker_id_or_label, text) tuples.
@@ -208,7 +208,7 @@ def reset_dialog_flags():
 
 
 def get_pre_combat_dialog(attacker, defender):
-    """Return a list of dialog lines, or None if no dialog fires."""
+    '''Return a list of dialog lines, or None if no dialog fires.'''
     lines = None
 
     # Check rival dialog (specific pair, fires once)

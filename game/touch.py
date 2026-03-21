@@ -1,4 +1,4 @@
-"""
+'''
 On-screen touch/mouse controls for Sengoku Tactics.
 Renders a virtual D-pad, action buttons, and zoom controls.
 
@@ -8,7 +8,7 @@ Mobile features:
   - Tap to select/act as before
   - All buttons sized for finger touch (min 52px)
   - Drag threshold: 8px — moves under threshold are treated as taps
-"""
+'''
 import math
 import pygame
 from game.constants import *
@@ -17,7 +17,7 @@ from game.constants import *
 # ── Button definitions ─────────────────────────────────────────────────────────
 
 class TouchButton:
-    """A single on-screen button."""
+    '''A single on-screen button.'''
     def __init__(self, action, label, icon, rect, color=(60, 60, 90)):
         self.action  = action
         self.label   = label
@@ -119,7 +119,7 @@ class TouchControls:
     # ── Button interaction ────────────────────────────────────────────────────
 
     def handle_mouse_down(self, mx, my):
-        """Call on MOUSEBUTTONDOWN (left button). Returns action string or None."""
+        '''Call on MOUSEBUTTONDOWN (left button). Returns action string or None.'''
         # Check buttons first
         for btn in ALL_BUTTONS:
             if btn.hit(mx, my):
@@ -137,8 +137,8 @@ class TouchControls:
         return None
 
     def handle_mouse_motion(self, mx, my):
-        """Call on MOUSEMOTION (with left button held). Updates drag state.
-        Returns True if dragging (caller should suppress tile-click logic)."""
+        '''Call on MOUSEMOTION (with left button held). Updates drag state.
+        Returns True if dragging (caller should suppress tile-click logic).'''
         if self._drag_start_px is None:
             return False
         sx, sy = self._drag_start_px
@@ -168,7 +168,7 @@ class TouchControls:
         return self._is_dragging
 
     def handle_mouse_up(self, mx, my):
-        """Returns True if this was a drag (not a tap)."""
+        '''Returns True if this was a drag (not a tap).'''
         was_drag = self._is_dragging
         for btn in ALL_BUTTONS:
             btn.pressed = False
@@ -181,7 +181,7 @@ class TouchControls:
         return was_drag
 
     def tile_at_click(self, mx, my, renderer):
-        """Convert a map-area click to tile coordinates. Returns (None,None) if on button."""
+        '''Convert a map-area click to tile coordinates. Returns (None,None) if on button.'''
         if mx >= MAP_W:
             return None, None
         for btn in ALL_BUTTONS:
@@ -193,14 +193,14 @@ class TouchControls:
     # ── Finger / pinch zoom ───────────────────────────────────────────────────
 
     def handle_finger_down(self, finger_id, fx, fy, sw, sh):
-        """Track finger for pinch-zoom. fx/fy are 0..1 normalized."""
+        '''Track finger for pinch-zoom. fx/fy are 0..1 normalized.'''
         self._finger_positions[finger_id] = (fx * sw, fy * sh)
         if len(self._finger_positions) == 2:
             pts = list(self._finger_positions.values())
             self._pinch_start_dist = math.hypot(pts[0][0]-pts[1][0], pts[0][1]-pts[1][1])
 
     def handle_finger_motion(self, finger_id, fx, fy, sw, sh):
-        """Returns zoom delta (+1/-1) if pinch detected, else 0."""
+        '''Returns zoom delta (+1/-1) if pinch detected, else 0.'''
         if finger_id not in self._finger_positions:
             return 0
         self._finger_positions[finger_id] = (fx * sw, fy * sh)
