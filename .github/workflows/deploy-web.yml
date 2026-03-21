@@ -35,35 +35,34 @@ jobs:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
         run: |
-          # pygbag dev mode (no --build) generates BOTH index.html AND the .apk
-          # Run in background, wait for index.html to appear, then kill the server
-          pygbag . &
+          # --html embeds all Python source into the HTML (no CDN download needed during build)
+          # --cdn sets the runtime CDN that browsers will use to load pythons.js
+          # We use a background process + timeout because pygbag still tries to contact
+          # the CDN after building; we kill it once the HTML file appears
+          pygbag --build --html --cdn "https://pygame-web.github.io/archives/0.9/" . &
           PYGBAG_PID=$!
-          echo "pygbag PID: $PYGBAG_PID"
 
-          for i in $(seq 1 90); do
-            if [ -f build/web/index.html ]; then
-              echo "index.html generated after ${i}s"
+          for i in $(seq 1 60); do
+            if [ -f build/web/fire-emblem-like-game.html ]; then
+              echo "HTML generated after ${i}s"
               break
             fi
-            echo "Waiting... ${i}s"
             sleep 1
           done
 
           kill $PYGBAG_PID 2>/dev/null || true
           wait $PYGBAG_PID 2>/dev/null || true
 
-          echo "--- build/web contents ---"
-          ls -la build/web/ || echo "build/web does not exist"
-
-          if [ ! -f build/web/index.html ]; then
-            echo "ERROR: index.html was not generated after 90s"
-            find . -name "index.html" 2>/dev/null | head -10
+          # Rename to index.html (required for GitHub Pages root)
+          if [ -f build/web/fire-emblem-like-game.html ]; then
+            cp build/web/fire-emblem-like-game.html build/web/index.html
+            echo "index.html created successfully"
+            head -3 build/web/index.html
+          else
+            echo "ERROR: fire-emblem-like-game.html was not generated"
+            ls -la build/web/ || echo "build/web missing"
             exit 1
           fi
-
-          echo "--- index.html preview ---"
-          head -20 build/web/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
