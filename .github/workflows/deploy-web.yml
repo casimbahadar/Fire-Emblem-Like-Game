@@ -40,9 +40,11 @@ jobs:
           find . -name "*.py" -not -path "./build/*" \
             -exec sed -i "s/\"\"\"/'''/g" {} \;
 
-          # --html embeds all Python source into index.html (no APK needed, no CDN at build time)
-          # archives/0.9 CDN confirmed working in browsers
-          pygbag --build --html --cdn "https://pygame-web.github.io/archives/0.9/" . &
+          # --html embeds all Python source into a single HTML file.
+          # Use pygbag's own default CDN (cdn/0.9.3) — it matches the installed
+          # pygbag version and supports the --html embedded-Python mode.
+          # archives/0.9 is an older CDN that does NOT support embedded Python.
+          pygbag --build --html . &
           PYGBAG_PID=$!
 
           for i in $(seq 1 60); do
