@@ -1,21 +1,19 @@
-"""
-Sengoku Tactics: Age of the Warring States
-Fire Emblem-style tactical RPG · Samurai Warriors characters
-20 Chapters · Tutorial · Boss Dialogs · Touch/Mouse Controls
-
-Keyboard:          Touch/Mouse:
-  Arrows/WASD        D-Pad (bottom-left)
-  Z/Enter: OK        ✓ button / tap unit or tile
-  X/Esc: Cancel      ✕ button
-  A: Attack          ⚔ button
-  H: Heal            ♥ button
-  W: Wait            Zz button
-  T: Talk/Recruit    ! button
-  I: Stat Sheet      i button
-  E: Seize           ★ button
-  Space: End Turn    ▶▶ button
-  S: Skip tutorial
-"""
+# Sengoku Tactics: Age of the Warring States
+# Fire Emblem-style tactical RPG · Samurai Warriors characters
+# 20 Chapters · Tutorial · Boss Dialogs · Touch/Mouse Controls
+#
+# Keyboard:          Touch/Mouse:
+#   Arrows/WASD        D-Pad (bottom-left)
+#   Z/Enter: OK        ✓ button / tap unit or tile
+#   X/Esc: Cancel      ✕ button
+#   A: Attack          ⚔ button
+#   H: Heal            ♥ button
+#   W: Wait            Zz button
+#   T: Talk/Recruit    ! button
+#   I: Stat Sheet      i button
+#   E: Seize           ★ button
+#   Space: End Turn    ▶▶ button
+#   S: Skip tutorial
 import sys
 import asyncio
 import pygame
