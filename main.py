@@ -29,7 +29,7 @@ from game.chapter    import CHAPTERS
 
 
 def _build_tutorial_chapter(gs):
-    """Inject a lightweight tutorial 'chapter' into the game state."""
+    '''Inject a lightweight tutorial 'chapter' into the game state.'''
     import copy
     gs.game_map     = make_tutorial_map()
     gs.player_units = []
@@ -135,7 +135,7 @@ async def main():
         renderer.center_camera(gs.game_map, gs.cursor_x, gs.cursor_y)
 
     def tutorial_event(event_type):
-        """Fire a tutorial event and advance if stage is satisfied."""
+        '''Fire a tutorial event and advance if stage is satisfied.'''
         if not gs.tutorial.active:
             return
         if gs.tutorial.check_completion(gs, event_type):
@@ -152,10 +152,10 @@ async def main():
 
     # ── Action dispatcher (shared between keyboard and touch) ─────────────────
     def do_action(action):
-        """
+        '''
         Execute a game action by name. Called by both keyboard handlers and
         touch button handlers, keeping both paths in sync.
-        """
+        '''
         nonlocal preview_target, attack_targets, attack_cursor
         nonlocal heal_targets, heal_cursor, showing_preview, showing_heal_sel
         nonlocal showing_stat_sheet, stat_sheet_unit
@@ -797,5 +797,4 @@ def _render_heal_overlay(screen, font_sm, font_md, targets, cursor):
                 (box.x+12,y+4))
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
