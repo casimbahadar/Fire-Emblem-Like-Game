@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+<title>{{cookiecutter.title}}</title>
+<style>
+html { touch-action: none; overflow: hidden; }
+body { background: black; margin: 0; padding: 0; }
+canvas { display: block; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<script src="{{cookiecutter.cdn}}pythons.js"
+  id="site"
+  data-cdn="{{cookiecutter.cdn}}"
+  data-src="{{cookiecutter.archive}}.apk"
+  type="text/javascript"
+  defer>
+</script>
+</body>
+</html>

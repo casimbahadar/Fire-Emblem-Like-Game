@@ -35,9 +35,8 @@ jobs:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
         run: |
-          # Use archives/0.9 CDN — confirmed working in browser (loads pythons.js + WASM runtime).
-          # --build (no --html): packages game into .apk and generates index.html from template.
-          # archives/0.9/default.tmpl is the valid template; cdn/0.9.3/default.tmpl is not.
+          # default.tmpl is committed to the repo — pygbag uses it directly, no CDN download needed.
+          # --cdn sets the runtime URL embedded in index.html for the browser to use.
           pygbag --build --cdn "https://pygame-web.github.io/archives/0.9/" . &
           PYGBAG_PID=$!
 
