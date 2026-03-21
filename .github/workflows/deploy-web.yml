@@ -39,7 +39,7 @@ jobs:
           # --cdn sets the runtime CDN that browsers will use to load pythons.js
           # We use a background process + timeout because pygbag still tries to contact
           # the CDN after building; we kill it once the HTML file appears
-          pygbag --build --html --cdn "https://pygame-web.github.io/archives/0.9/" . &
+          pygbag --build --html . &
           PYGBAG_PID=$!
 
           for i in $(seq 1 60); do
