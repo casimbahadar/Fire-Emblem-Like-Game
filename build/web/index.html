@@ -1,11 +1,11 @@
-<html lang="en-us"><script src="https://pygame-web.github.io/archives/0.9/pythons.js" type=module id=site data-LINES=50 data-CONSOLE=25 data-python=python3.12 data-os=vtx,fs,snd,gui async defer>#<!--
+<html lang="en-us"><script src="https://pygame-web.github.io/cdn/0.9.3/pythons.js" type=module id=site data-LINES=50 data-CONSOLE=25 data-python=python3.12 data-os=vtx,fs,snd,gui async defer>#<!--
 
 print("""
 Loading fire-emblem-like-game from fire-emblem-like-game.apk
     Pygbag Version : 0.9.3
     Template Version : 0.9.0
     Python  : 3.12
-    CDN URL : https://pygame-web.github.io/archives/0.9/
+    CDN URL : https://pygame-web.github.io/cdn/0.9.3/
     Screen  : 1280x720
     Title   : fire-emblem-like-game
     Folder  : fire-emblem-like-game
@@ -135,11 +135,9 @@ async def custom_site():
     # preloader will change dir and prepend it to sys.path
     platform.run_main(PyConfig, loaderhome= appdir / "assets", loadermain=None)
 
-    # wait preloading complete (with 60s timeout to avoid getting stuck)
-    for _ in range(600):
-        if embed.counter() >= 0:
-            break
-        await asyncio.sleep(.1)
+    # yield briefly so run_main can finish env setup; no need to wait for
+    # embed.counter() since loadermain=None means the preloader never runs main
+    await asyncio.sleep(0.5)
 
     main_path = appdir / "assets" / "main.py"
 
@@ -198,11 +196,11 @@ config = {
     _sdl2 : "canvas",
     user_canvas : 0,
     user_canvas_managed : 0,
-    ume_block : 1,
+    ume_block : 0,
     can_close : 0,
     archive : "fire-emblem-like-game",
     gui_debug : 3,
-    cdn : "https://pygame-web.github.io/archives/0.9/",
+    cdn : "https://pygame-web.github.io/cdn/0.9.3/",
     autorun : 0,
     PYBUILD : "3.12"
 }
@@ -217,10 +215,10 @@ config = {
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes"/>
 
-    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/pythonrc.py">
-    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/vt/xterm.js">
-    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/vt/xterm-addon-image.js">
-    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/vt/xterm-addon-image.js">
+    <link rel="prefetch" href="https://pygame-web.github.io/cdn/0.9.3/pythonrc.py">
+    <link rel="prefetch" href="https://pygame-web.github.io/cdn/0.9.3/vt/xterm.js">
+    <link rel="prefetch" href="https://pygame-web.github.io/cdn/0.9.3/vt/xterm-addon-image.js">
+    <link rel="prefetch" href="https://pygame-web.github.io/cdn/0.9.3/vt/xterm-addon-image.js">
 
 
     <link rel="icon" type="image/png" href="favicon.png" sizes="16x16">
@@ -302,7 +300,7 @@ config = {
         }
     </style>
 
-    <script src="https://pygame-web.github.io/archives/0.9/browserfs.min.js"></script>
+    <script src="https://pygame-web.github.io/cdn/0.9.3/browserfs.min.js"></script>
 
 </head>
 
@@ -363,7 +361,7 @@ frameborder="1"
                 mozallowfullscreen="true"
                 sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock"
                 allow="autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated"
-                src="https://pygame-web.github.io/archives/0.9/empty.html"
+                src="https://pygame-web.github.io/cdn/0.9.3/empty.html"
                 scrolling="yes">
             </iframe>
         </div>
