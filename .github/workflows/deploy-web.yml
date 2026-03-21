@@ -31,33 +31,39 @@ jobs:
           pip install pygame pygbag
 
       - name: Build web version
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
         run: |
-          # pygbag expects the SOURCE DIRECTORY, not main.py
-          pygbag --build .
-          echo "--- build/web contents after pygbag ---"
+          # pygbag dev mode (no --build) generates BOTH index.html AND the .apk
+          # Run in background, wait for index.html to appear, then kill the server
+          pygbag . &
+          PYGBAG_PID=$!
+          echo "pygbag PID: $PYGBAG_PID"
+
+          for i in $(seq 1 90); do
+            if [ -f build/web/index.html ]; then
+              echo "index.html generated after ${i}s"
+              break
+            fi
+            echo "Waiting... ${i}s"
+            sleep 1
+          done
+
+          kill $PYGBAG_PID 2>/dev/null || true
+          wait $PYGBAG_PID 2>/dev/null || true
+
+          echo "--- build/web contents ---"
           ls -la build/web/ || echo "build/web does not exist"
 
-      - name: Create index.html if missing
-        run: |
           if [ ! -f build/web/index.html ]; then
-            echo "pygbag did not generate index.html — copying from pygbag package template..."
-            mkdir -p build/web
-            PYGBAG_DIR=$(python -c "import pygbag, os; print(os.path.dirname(pygbag.__file__))")
-            echo "pygbag package dir: $PYGBAG_DIR"
-            find "$PYGBAG_DIR" -name "index.html" 2>/dev/null | head -5
-            TEMPLATE=$(find "$PYGBAG_DIR" -name "index.html" 2>/dev/null | head -1)
-            if [ -n "$TEMPLATE" ]; then
-              cp "$TEMPLATE" build/web/index.html
-              echo "Copied template from: $TEMPLATE"
-            else
-              echo "ERROR: Could not find pygbag template index.html"
-              echo "pygbag package contents:"
-              find "$PYGBAG_DIR" -type f | sort
-              exit 1
-            fi
+            echo "ERROR: index.html was not generated after 90s"
+            find . -name "index.html" 2>/dev/null | head -10
+            exit 1
           fi
-          echo "--- index.html first 30 lines ---"
-          head -30 build/web/index.html
+
+          echo "--- index.html preview ---"
+          head -20 build/web/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
