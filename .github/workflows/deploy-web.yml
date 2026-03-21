@@ -35,14 +35,19 @@ jobs:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
         run: |
-          # default.tmpl is committed to the repo — pygbag uses it directly, no CDN download needed.
-          # --cdn sets the runtime URL embedded in index.html for the browser to use.
-          pygbag --build --cdn "https://pygame-web.github.io/archives/0.9/" . &
+          # Replace """ with ''' in game files — both are valid Python triple-quote strings,
+          # but pygbag's html_embed wraps files in """...""" which breaks if content has """.
+          find . -name "*.py" -not -path "./build/*" \
+            -exec sed -i "s/\"\"\"/'''/g" {} \;
+
+          # --html embeds all Python source into index.html (no APK needed, no CDN at build time)
+          # archives/0.9 CDN confirmed working in browsers
+          pygbag --build --html --cdn "https://pygame-web.github.io/archives/0.9/" . &
           PYGBAG_PID=$!
 
           for i in $(seq 1 60); do
-            if [ -f build/web/index.html ]; then
-              echo "index.html generated after ${i}s"
+            if ls build/web/*.html 2>/dev/null | grep -q .; then
+              echo "HTML generated after ${i}s"
               break
             fi
             sleep 1
@@ -51,15 +56,14 @@ jobs:
           kill $PYGBAG_PID 2>/dev/null || true
           wait $PYGBAG_PID 2>/dev/null || true
 
-          echo "--- build/web contents ---"
-          ls -la build/web/
-
-          if [ ! -f build/web/index.html ]; then
-            echo "ERROR: index.html was not generated"
-            exit 1
+          HTML_FILE=$(ls build/web/*.html 2>/dev/null | head -1)
+          if [ -n "$HTML_FILE" ]; then
+            cp "$HTML_FILE" build/web/index.html
+            echo "index.html created — first 3 lines:"
+            head -3 build/web/index.html
+          else
+            echo "ERROR: no .html generated"; ls -la build/web/; exit 1
           fi
-
-          head -5 build/web/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
