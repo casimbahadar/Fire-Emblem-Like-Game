@@ -538,24 +538,28 @@ async def main():
             do_action("confirm")
 
     # ── JS→Python touch tap polling (pygbag web only) ─────────────────────────
+    # JS writes "x,y" into a hidden DOM input on touchend; Python polls it.
+    # Uses platform.document.getElementById which is confirmed working in pygbag.
+    _tap_el = None
     try:
         import platform as _plat
-        _js_win = getattr(_plat, 'window', None)
+        _tap_el = _plat.document.getElementById('_tapdata')
     except Exception:
-        _js_win = None
+        pass
 
     # ── Main loop ─────────────────────────────────────────────────────────────
     running = True
     while running:
         clock.tick(FPS)
 
-        # Poll touch tap set by JS (bypasses SDL which ignores synthetic events)
-        if _js_win is not None:
+        # Poll touch tap from DOM hidden input (bypasses SDL event system)
+        if _tap_el is not None:
             try:
-                if int(getattr(_js_win, '_tap_pending', 0)):
-                    _js_win._tap_pending = 0
-                    handle_tap(int(getattr(_js_win, '_tap_x', 0)),
-                               int(getattr(_js_win, '_tap_y', 0)))
+                v = str(_tap_el.value)
+                if v:
+                    _tap_el.value = ''
+                    parts = v.split(',')
+                    handle_tap(int(parts[0]), int(parts[1]))
             except Exception:
                 pass
 
