@@ -220,15 +220,13 @@ class TouchControls:
         return 0
 
     def handle_finger_up(self, finger_id):
-        '''Returns (px, py) pixel tap position if this was a single-finger tap, else None.'''
+        '''Returns (px, py) pixel position if this was a single-finger lift (not a pinch), else None.'''
         tap = None
-        if finger_id in self._finger_positions and finger_id in self._finger_starts:
-            # Only count as a tap when no other finger is active (no pinch)
+        if finger_id in self._finger_positions:
+            # Only fire a tap when no other finger is currently active (not a pinch gesture)
             if len(self._finger_positions) == 1:
-                sx, sy = self._finger_starts[finger_id]
                 ex, ey = self._finger_positions[finger_id]
-                if math.hypot(ex - sx, ey - sy) < DRAG_THRESHOLD:
-                    tap = (int(ex), int(ey))
+                tap = (int(ex), int(ey))
         self._finger_positions.pop(finger_id, None)
         self._finger_starts.pop(finger_id, None)
         if len(self._finger_positions) < 2:
