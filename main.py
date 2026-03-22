@@ -588,21 +588,42 @@ async def main():
     # event and avoid double-processing every tap on mobile.
     _active_touch_fingers = 0
 
+    # ── Debug overlay state ────────────────────────────────────────────────────
+    _dbg_frame  = 0
+    _dbg_events = []   # last few event-type short-names received
+
     # ── Main loop ─────────────────────────────────────────────────────────────
     running = True
     while running:
         clock.tick(FPS)
+        _dbg_frame += 1
+        # At most ONE tap action per frame avoids double-fire when both
+        # FINGERDOWN and a synthetic MOUSEBUTTONDOWN arrive together.
+        _tap_done = False
 
         for event in pygame.event.get():
+            # --- debug: record last few event types --------------------------
+            _ENAMES = {
+                pygame.QUIT:"QUIT", pygame.MOUSEBUTTONDOWN:"MBD",
+                pygame.MOUSEBUTTONUP:"MBU", pygame.MOUSEMOTION:"MMO",
+                pygame.FINGERDOWN:"FD", pygame.FINGERUP:"FU",
+                pygame.FINGERMOTION:"FM", pygame.KEYDOWN:"KEY",
+                pygame.MOUSEWHEEL:"MWH",
+            }
+            _dbg_events = (_dbg_events + [_ENAMES.get(event.type, str(event.type))])[-6:]
+            # -----------------------------------------------------------------
+
             if event.type == pygame.QUIT:
                 running = False
 
             # ── Mouse / Touch input ───────────────────────────────────────────
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # Skip synthetic mouse events produced by SDL from touch input;
-                # those are handled via FINGERDOWN/FINGERUP to avoid double-actions.
-                if _active_touch_fingers == 0:
-                    handle_tap(*event.pos)
+                if not _tap_done:
+                    # For simple tap-to-continue screens always respond to mouse;
+                    # for gameplay skip synthetic touch MOUSEBUTTONDOWN (handled via FINGERUP).
+                    if gs.state in _TAP_ON_DOWN_STATES or _active_touch_fingers == 0:
+                        handle_tap(*event.pos)
+                        _tap_done = True
 
             elif event.type == pygame.MOUSEMOTION:
                 # Drag-to-scroll the map
@@ -618,53 +639,53 @@ async def main():
 
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 was_drag = touch.handle_mouse_up(*event.pos)
-                # If it was a drag, suppress the tile-click that would normally follow
 
             # ── Finger / touch events (pinch-zoom + tap detection) ────────────
             elif event.type == pygame.FINGERDOWN:
                 _active_touch_fingers += 1
-                fid = event.finger_id
-                _finger_start[fid]    = (event.x, event.y)
+                # pygbag may name the attribute finger_id or fingerId depending on build
+                fid = getattr(event, 'finger_id', None)
+                if fid is None:
+                    fid = getattr(event, 'fingerId', 0)
+                fx = getattr(event, 'x', 0.5)
+                fy = getattr(event, 'y', 0.5)
+                _finger_start[fid]    = (fx, fy)
                 _finger_moved[fid]    = False
                 _finger_consumed[fid] = False
-                touch.handle_finger_down(fid, event.x, event.y,
-                                         SCREEN_WIDTH, SCREEN_HEIGHT)
-                # For simple "tap to continue" screens fire immediately on touch-down
-                # so the response feels instant and we don't depend on FINGERUP timing.
-                if gs.state in _TAP_ON_DOWN_STATES:
-                    mx = int(event.x * SCREEN_WIDTH)
-                    my = int(event.y * SCREEN_HEIGHT)
-                    handle_tap(mx, my)
+                touch.handle_finger_down(fid, fx, fy, SCREEN_WIDTH, SCREEN_HEIGHT)
+                if gs.state in _TAP_ON_DOWN_STATES and not _tap_done:
+                    handle_tap(int(fx * SCREEN_WIDTH), int(fy * SCREEN_HEIGHT))
                     _finger_consumed[fid] = True
+                    _tap_done = True
+
             elif event.type == pygame.FINGERMOTION:
-                fid = event.finger_id
+                fid = getattr(event, 'finger_id', getattr(event, 'fingerId', 0))
+                fx  = getattr(event, 'x', 0.5)
+                fy  = getattr(event, 'y', 0.5)
                 if fid in _finger_start:
                     ox, oy = _finger_start[fid]
-                    # 0.05 normalised ≈ 20 CSS px on a 400px-wide phone.
-                    # This is above normal tap jitter (5-15 px) but below
-                    # intentional scroll swipes, so taps aren't misread as drags.
-                    if abs(event.x - ox) > 0.05 or abs(event.y - oy) > 0.05:
+                    if abs(fx - ox) > 0.05 or abs(fy - oy) > 0.05:
                         _finger_moved[fid] = True
-                zdelta = touch.handle_finger_motion(fid, event.x, event.y,
-                                                    SCREEN_WIDTH, SCREEN_HEIGHT)
+                zdelta = touch.handle_finger_motion(fid, fx, fy, SCREEN_WIDTH, SCREEN_HEIGHT)
                 if zdelta > 0:
                     renderer.zoom_in()
                     if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
                 elif zdelta < 0:
                     renderer.zoom_out()
                     if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
+
             elif event.type == pygame.FINGERUP:
                 _active_touch_fingers = max(0, _active_touch_fingers - 1)
-                fid = event.finger_id
+                fid = getattr(event, 'finger_id', getattr(event, 'fingerId', 0))
+                fx  = getattr(event, 'x', 0.5)
+                fy  = getattr(event, 'y', 0.5)
                 was_drag     = _finger_moved.pop(fid, False)
                 was_consumed = _finger_consumed.pop(fid, False)
                 _finger_start.pop(fid, None)
                 touch.handle_finger_up(fid)
-                if not was_drag and not was_consumed:
-                    # Finger coords are normalised [0,1]; convert to screen pixels
-                    mx = int(event.x * SCREEN_WIDTH)
-                    my = int(event.y * SCREEN_HEIGHT)
-                    handle_tap(mx, my)
+                if not was_drag and not was_consumed and not _tap_done:
+                    handle_tap(int(fx * SCREEN_WIDTH), int(fy * SCREEN_HEIGHT))
+                    _tap_done = True
 
             # ── Mouse wheel zoom ──────────────────────────────────────────────
             elif event.type == pygame.MOUSEWHEEL:
@@ -857,6 +878,19 @@ async def main():
 
             # Touch controls (always visible during play)
             touch.render(screen)
+
+        # ── Debug overlay (always on top) ─────────────────────────────────────
+        # Shows whether Python loop is running and what events arrive on mobile.
+        # Remove once touch is confirmed working.
+        _dbg_lines = [
+            f"F:{_dbg_frame}  {gs.state}",
+            "evts: " + " ".join(_dbg_events[-4:]) if _dbg_events else "evts: (none)",
+        ]
+        _dbg_surf = pygame.Surface((260, 36), pygame.SRCALPHA)
+        _dbg_surf.fill((0, 0, 0, 200))
+        screen.blit(_dbg_surf, (2, 2))
+        for _di, _dl in enumerate(_dbg_lines):
+            screen.blit(font_sm.render(_dl, True, (255, 80, 80)), (6, 4 + _di * 14))
 
         pygame.display.flip()
         await asyncio.sleep(0)   # yield to browser event loop (pygbag requirement)
