@@ -131,46 +131,56 @@ async def custom_site():
     compose()
 
 
+    import os
+    _assets = str(appdir / "assets")
     main_path = appdir / "assets" / "main.py"
 
     # Set up Python path so the game's imports work.
     # Skip platform.run_main — with loadermain=None it can stall the event loop.
-    import os
-    _assets = str(appdir / "assets")
     if _assets not in sys.path:
         sys.path.insert(0, _assets)
     try:
         os.chdir(_assets)
-    except Exception:
-        pass
+    except Exception as _cd_err:
+        print("chdir failed:", _cd_err)
 
-    # Clear loading screen
-    screen.fill( (0,0,0,0) )
-    pygame.display.flip()
+    # Show "Launching…" then clear; yield between each to let browser paint
+    _lf = pygame.font.Font(None, 24)
+    screen.blit(_lf.render("Launching game...", True, (200, 200, 200)),
+                (marginx, marginy + uy(.090)))
+    pygame.display.update()
+    await asyncio.sleep(0)
+
+    screen.fill((0, 0, 0))
+    pygame.display.update()
+    await asyncio.sleep(0)
 
     # exec() the game's main.py into a fresh namespace, then await main().
-    # More reliable in WASM than importlib.util.spec_from_file_location,
-    # which can silently return None causing AttributeError before the
-    # error screen even renders.
+    # Avoids importlib.util.spec_from_file_location which silently returns
+    # None in WASM and crashes before the error screen can appear.
+    # Error display reuses the existing screen instead of calling set_mode()
+    # again, which crashes on an already-initialised SRCALPHA surface.
     _ns = {"__name__": "__main__", "__file__": str(main_path)}
     try:
-        exec(open(str(main_path)).read(), _ns)
+        print("Reading main.py:", str(main_path))
+        _code = open(str(main_path)).read()
+        print("main.py read OK, len=", len(_code))
+        exec(_code, _ns)
+        print("exec OK, calling main()")
         await _ns["main"]()
     except Exception as _e:
         import traceback
         _tb = traceback.format_exc()
-        print("GAME LAUNCH ERROR:", _tb)
-        # Show error on screen
-        screen2 = pygame.display.set_mode([800, 400])
-        screen2.fill((20, 0, 0))
-        _ef = pygame.font.Font(None, 22)
-        _y = 10
+        print("GAME LAUNCH ERROR:\n", _tb)
+        screen.fill((40, 0, 0))
+        _ef = pygame.font.Font(None, 20)
+        _ey = 10
         for _line in _tb.splitlines():
-            screen2.blit(_ef.render(_line[:90], True, (255, 80, 80)), (10, _y))
-            _y += 22
-            if _y > 380:
+            screen.blit(_ef.render(_line[:100], True, (255, 120, 120)), (10, _ey))
+            _ey += 22
+            if _ey > screen.get_height() - 10:
                 break
-        pygame.display.flip()
+        pygame.display.update()
         while True:
             await asyncio.sleep(1)
 
