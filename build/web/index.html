@@ -397,29 +397,36 @@ height="1px"
     </canvas>
 
     <script>
-    // Touch→mouse bridge: converts touch events to mouse events for SDL2/pygame.
-    // Tap detection uses MOUSEBUTTONDOWN only (FINGERUP removed from Python side).
+    // JS→Python tap bridge: SDL ignores synthetic MouseEvents, so we set a shared
+    // global that Python polls each frame via platform.window.
+    window._tap_pending = 0;
+    window._tap_x = 0;
+    window._tap_y = 0;
     (function() {
         var c = document.getElementById('canvas');
         if (!c) return;
-        function synth(type, t, buttons) {
-            c.dispatchEvent(new MouseEvent(type, {
-                bubbles: true, cancelable: true,
-                clientX: t.clientX, clientY: t.clientY,
-                button: 0, buttons: buttons
-            }));
-        }
+        var _startX = 0, _startY = 0, _moved = false;
         c.addEventListener('touchstart', function(e) {
             e.preventDefault();
-            synth('mousedown', e.changedTouches[0], 1);
-        }, {passive: false});
-        c.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            synth('mouseup', e.changedTouches[0], 0);
+            var t = e.changedTouches[0];
+            _startX = t.clientX; _startY = t.clientY; _moved = false;
         }, {passive: false});
         c.addEventListener('touchmove', function(e) {
             e.preventDefault();
-            synth('mousemove', e.changedTouches[0], 1);
+            var t = e.changedTouches[0];
+            var dx = t.clientX - _startX, dy = t.clientY - _startY;
+            if (dx*dx + dy*dy > 100) _moved = true;  // 10px threshold
+        }, {passive: false});
+        c.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            if (!_moved) {
+                var t = e.changedTouches[0];
+                var rect = c.getBoundingClientRect();
+                window._tap_x = Math.round((t.clientX - rect.left) * c.width  / Math.max(rect.width,  1));
+                window._tap_y = Math.round((t.clientY - rect.top)  * c.height / Math.max(rect.height, 1));
+                window._tap_pending = 1;
+            }
+            _moved = false;
         }, {passive: false});
     })();
     </script>
