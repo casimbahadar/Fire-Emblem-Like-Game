@@ -113,7 +113,8 @@ class TouchControls:
         self._drag_px_accum  = [0, 0] # sub-tile pixel accumulator
 
         # Pinch-zoom state (two fingers)
-        self._finger_positions = {}   # finger_id → (fx, fy) in pixels (0..1 normalized * screen)
+        self._finger_positions = {}   # finger_id → (px, py) in pixels
+        self._finger_starts    = {}   # finger_id → (px, py) at finger-down
         self._pinch_start_dist = None
 
     # ── Button interaction ────────────────────────────────────────────────────
@@ -193,8 +194,10 @@ class TouchControls:
     # ── Finger / pinch zoom ───────────────────────────────────────────────────
 
     def handle_finger_down(self, finger_id, fx, fy, sw, sh):
-        '''Track finger for pinch-zoom. fx/fy are 0..1 normalized.'''
-        self._finger_positions[finger_id] = (fx * sw, fy * sh)
+        '''Track finger for pinch-zoom and tap detection. fx/fy are 0..1 normalized.'''
+        px, py = fx * sw, fy * sh
+        self._finger_positions[finger_id] = (px, py)
+        self._finger_starts[finger_id]    = (px, py)
         if len(self._finger_positions) == 2:
             pts = list(self._finger_positions.values())
             self._pinch_start_dist = math.hypot(pts[0][0]-pts[1][0], pts[0][1]-pts[1][1])
@@ -217,9 +220,20 @@ class TouchControls:
         return 0
 
     def handle_finger_up(self, finger_id):
+        '''Returns (px, py) pixel tap position if this was a single-finger tap, else None.'''
+        tap = None
+        if finger_id in self._finger_positions and finger_id in self._finger_starts:
+            # Only count as a tap when no other finger is active (no pinch)
+            if len(self._finger_positions) == 1:
+                sx, sy = self._finger_starts[finger_id]
+                ex, ey = self._finger_positions[finger_id]
+                if math.hypot(ex - sx, ey - sy) < DRAG_THRESHOLD:
+                    tap = (int(ex), int(ey))
         self._finger_positions.pop(finger_id, None)
+        self._finger_starts.pop(finger_id, None)
         if len(self._finger_positions) < 2:
             self._pinch_start_dist = None
+        return tap
 
     # ── Rendering ─────────────────────────────────────────────────────────────
 

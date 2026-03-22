@@ -495,6 +495,48 @@ async def main():
             else:
                 reset_interaction()
 
+    # ── Tap dispatcher (shared by MOUSEBUTTONDOWN and FINGERUP) ───────────────
+    def handle_tap(mx, my):
+        nonlocal showing_help
+        if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
+            btn_action = touch.handle_mouse_down(mx, my)
+            if btn_action:
+                if btn_action == "zoom_in":
+                    renderer.zoom_in()
+                    if gs.game_map: renderer.center_camera(gs.game_map, gs.cursor_x, gs.cursor_y)
+                elif btn_action == "zoom_out":
+                    renderer.zoom_out()
+                    if gs.game_map: renderer.center_camera(gs.game_map, gs.cursor_x, gs.cursor_y)
+                elif btn_action == "help":
+                    showing_help = not showing_help
+                else:
+                    do_action(btn_action)
+            else:
+                handle_map_click(mx, my)
+        elif gs.state == STATE_TITLE:
+            do_action("confirm")
+        elif gs.state == STATE_MODE_SELECT:
+            cy_mid = SCREEN_HEIGHT // 2
+            if my < cy_mid:
+                gs._mode_row = 0
+                gs._mode_cursor = 0 if mx < SCREEN_WIDTH // 2 else 1
+            else:
+                gs._mode_row = 1
+                gs._deploy_cursor = 0 if mx < SCREEN_WIDTH // 2 else 1
+            do_action("confirm")
+        elif gs.state == STATE_PROLOGUE:
+            do_action("confirm")
+        elif gs.state == STATE_SCENE:
+            do_action("confirm")
+        elif gs.state == STATE_PREP:
+            if mx > SCREEN_WIDTH * 3 // 4 and my > SCREEN_HEIGHT - 60:
+                do_action("battle")
+        elif gs.state == STATE_CHAPTER_INTRO:
+            gs.start_player_turn()
+            renderer.center_camera(gs.game_map, gs.cursor_x, gs.cursor_y)
+        elif gs.state in (STATE_VICTORY, STATE_GAME_OVER):
+            do_action("confirm")
+
     # ── Main loop ─────────────────────────────────────────────────────────────
     running = True
     while running:
@@ -506,47 +548,7 @@ async def main():
 
             # ── Mouse / Touch input ───────────────────────────────────────────
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mx,my = event.pos
-                if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
-                    btn_action = touch.handle_mouse_down(mx,my)
-                    if btn_action:
-                        if btn_action == "zoom_in":
-                            renderer.zoom_in()
-                            if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
-                        elif btn_action == "zoom_out":
-                            renderer.zoom_out()
-                            if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
-                        elif btn_action == "help":
-                            showing_help = not showing_help
-                        else:
-                            do_action(btn_action)
-                    else:
-                        handle_map_click(mx,my)
-                elif gs.state == STATE_TITLE:
-                    do_action("confirm")
-                elif gs.state == STATE_MODE_SELECT:
-                    # Tap: top half = difficulty row, bottom half = deploy row
-                    cy_mid = SCREEN_HEIGHT // 2
-                    if my < cy_mid:
-                        gs._mode_row = 0
-                        gs._mode_cursor = 0 if mx < SCREEN_WIDTH // 2 else 1
-                    else:
-                        gs._mode_row = 1
-                        gs._deploy_cursor = 0 if mx < SCREEN_WIDTH // 2 else 1
-                    do_action("confirm")
-                elif gs.state == STATE_PROLOGUE:
-                    do_action("confirm")
-                elif gs.state == STATE_SCENE:
-                    do_action("confirm")
-                elif gs.state == STATE_PREP:
-                    # Clicking right half of screen = "Battle!" shortcut
-                    if mx > SCREEN_WIDTH * 3 // 4 and my > SCREEN_HEIGHT - 60:
-                        do_action("battle")
-                elif gs.state == STATE_CHAPTER_INTRO:
-                    gs.start_player_turn()
-                    renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
-                elif gs.state in (STATE_VICTORY, STATE_GAME_OVER):
-                    do_action("confirm")
+                handle_tap(*event.pos)
 
             elif event.type == pygame.MOUSEMOTION:
                 # Drag-to-scroll the map
@@ -578,7 +580,9 @@ async def main():
                     renderer.zoom_out()
                     if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
             elif event.type == pygame.FINGERUP:
-                touch.handle_finger_up(event.finger_id)
+                tap = touch.handle_finger_up(event.finger_id)
+                if tap:
+                    handle_tap(*tap)
 
             # ── Mouse wheel zoom ──────────────────────────────────────────────
             elif event.type == pygame.MOUSEWHEEL:
