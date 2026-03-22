@@ -349,29 +349,32 @@ height="1px"
     </canvas>
 
     <script>
-    // Translate touch events to mouse events so SDL2 sees MOUSEBUTTONDOWN/UP.
-    // SDL2's emscripten runtime already listens for mousedown/mouseup on the canvas.
+    // Touch → JS globals polled by Python each frame.
+    // pygbag runs Python in a Web Worker; the SDL2 event bridge does not
+    // reliably forward synthesised DOM mouse events into pygame.event.get().
+    // Instead we write normalised touch coords to window globals and Python
+    // reads them directly via `import js` (pygbag's JS bridge).
+    window._pgTouchUp = 0;   // counter: increments on each touchend
+    window._pgTouchX  = 0.5; // normalised [0,1] x of last touchend
+    window._pgTouchY  = 0.5; // normalised [0,1] y of last touchend
     (function() {
         var c = document.getElementById('canvas');
         if (!c) return;
-        function synth(type, t, buttons) {
-            c.dispatchEvent(new MouseEvent(type, {
-                bubbles: true, cancelable: true,
-                clientX: t.clientX, clientY: t.clientY,
-                button: 0, buttons: buttons
-            }));
+        function normPos(touch) {
+            var r = c.getBoundingClientRect();
+            return {
+                x: Math.max(0, Math.min(1, (touch.clientX - r.left) / r.width)),
+                y: Math.max(0, Math.min(1, (touch.clientY - r.top)  / r.height))
+            };
         }
-        c.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            synth('mousedown', e.changedTouches[0], 1);
-        }, {passive: false});
+        c.addEventListener('touchstart', function(e) { e.preventDefault(); }, {passive: false});
+        c.addEventListener('touchmove',  function(e) { e.preventDefault(); }, {passive: false});
         c.addEventListener('touchend', function(e) {
             e.preventDefault();
-            synth('mouseup', e.changedTouches[0], 0);
-        }, {passive: false});
-        c.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-            synth('mousemove', e.changedTouches[0], 1);
+            var p = normPos(e.changedTouches[0]);
+            window._pgTouchX  = p.x;
+            window._pgTouchY  = p.y;
+            window._pgTouchUp = (window._pgTouchUp + 1) & 0xFFFF;
         }, {passive: false});
     })();
     </script>

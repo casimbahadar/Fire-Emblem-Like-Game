@@ -498,6 +498,8 @@ async def main():
     # ── Tap dispatcher (shared by MOUSEBUTTONDOWN and FINGERUP) ───────────────
     def handle_tap(mx, my):
         nonlocal showing_help
+        _D['taps'] += 1
+        _D['xy'] = (mx, my)
         if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
             # Any tap dismisses queued messages or active boss dialogs first,
             # before any gameplay interaction is attempted.
@@ -588,30 +590,36 @@ async def main():
     # event and avoid double-processing every tap on mobile.
     _active_touch_fingers = 0
 
-    # ── Debug overlay state ────────────────────────────────────────────────────
-    _dbg_frame  = 0
-    _dbg_events = []   # last few event-type short-names received
+    # ── JS-global touch polling (web only) ────────────────────────────────────
+    # In pygbag the Python runtime lives in a Web Worker and pygame's event
+    # bridge does NOT forward DOM mouse/touch events reliably.  Instead the
+    # index.html JS sets window._pgTouchUp / _pgTouchX / _pgTouchY on each
+    # touchend, and we poll those globals each frame from Python.
+    try:
+        import js as _jsw                          # available in pygbag/Emscripten
+        _js_seen_up = [int(getattr(_jsw, '_pgTouchUp', 0))]
+    except Exception:
+        _jsw = None
+        _js_seen_up = [0]
+
+    # ── Debug counters ────────────────────────────────────────────────────────
+    _D = {'frame': 0, 'mbd': 0, 'fd': 0, 'fu': 0, 'taps': 0,
+          'xy': None, 'js_up': 0}
 
     # ── Main loop ─────────────────────────────────────────────────────────────
     running = True
     while running:
         clock.tick(FPS)
-        _dbg_frame += 1
+        _D['frame'] += 1
         # At most ONE tap action per frame avoids double-fire when both
         # FINGERDOWN and a synthetic MOUSEBUTTONDOWN arrive together.
         _tap_done = False
 
         for event in pygame.event.get():
-            # --- debug: record last few event types --------------------------
-            _ENAMES = {
-                pygame.QUIT:"QUIT", pygame.MOUSEBUTTONDOWN:"MBD",
-                pygame.MOUSEBUTTONUP:"MBU", pygame.MOUSEMOTION:"MMO",
-                pygame.FINGERDOWN:"FD", pygame.FINGERUP:"FU",
-                pygame.FINGERMOTION:"FM", pygame.KEYDOWN:"KEY",
-                pygame.MOUSEWHEEL:"MWH",
-            }
-            _dbg_events = (_dbg_events + [_ENAMES.get(event.type, str(event.type))])[-6:]
-            # -----------------------------------------------------------------
+            # count events for debug overlay
+            if event.type == pygame.MOUSEBUTTONDOWN: _D['mbd'] += 1
+            elif event.type == pygame.FINGERDOWN:    _D['fd']  += 1
+            elif event.type == pygame.FINGERUP:      _D['fu']  += 1
 
             if event.type == pygame.QUIT:
                 running = False
@@ -840,6 +848,22 @@ async def main():
                     elif key == pygame.K_ESCAPE:
                         gs.state = STATE_TITLE
 
+        # ── JS-global touch poll (web/pygbag only) ───────────────────────────
+        # pygame's event bridge doesn't forward DOM events in the web-worker
+        # architecture, so we poll JS globals set by index.html touch handlers.
+        if _jsw is not None and not _tap_done:
+            try:
+                cur_up = int(getattr(_jsw, '_pgTouchUp', 0))
+                if cur_up != _js_seen_up[0]:
+                    _js_seen_up[0] = cur_up
+                    _D['js_up'] += 1
+                    tx = float(getattr(_jsw, '_pgTouchX', 0.5))
+                    ty = float(getattr(_jsw, '_pgTouchY', 0.5))
+                    handle_tap(int(tx * SCREEN_WIDTH), int(ty * SCREEN_HEIGHT))
+                    _tap_done = True
+            except Exception:
+                pass
+
         # ── Auto enemy turn ───────────────────────────────────────────────────
         if gs.state == STATE_ENEMY_TURN:
             gs.run_enemy_turn()
@@ -880,14 +904,13 @@ async def main():
             touch.render(screen)
 
         # ── Debug overlay (always on top) ─────────────────────────────────────
-        # Shows whether Python loop is running and what events arrive on mobile.
-        # Remove once touch is confirmed working.
         _dbg_lines = [
-            f"F:{_dbg_frame}  {gs.state}",
-            "evts: " + " ".join(_dbg_events[-4:]) if _dbg_events else "evts: (none)",
+            f"F:{_D['frame']}  {gs.state}",
+            f"MBD:{_D['mbd']} FD:{_D['fd']} FU:{_D['fu']}",
+            f"taps:{_D['taps']} js:{_D['js_up']} xy:{_D['xy']}",
         ]
-        _dbg_surf = pygame.Surface((260, 36), pygame.SRCALPHA)
-        _dbg_surf.fill((0, 0, 0, 200))
+        _dbg_surf = pygame.Surface((300, 44), pygame.SRCALPHA)
+        _dbg_surf.fill((0, 0, 0, 210))
         screen.blit(_dbg_surf, (2, 2))
         for _di, _dl in enumerate(_dbg_lines):
             screen.blit(font_sm.render(_dl, True, (255, 80, 80)), (6, 4 + _di * 14))
