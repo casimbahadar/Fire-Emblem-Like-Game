@@ -903,18 +903,6 @@ async def main():
             # Touch controls (always visible during play)
             touch.render(screen)
 
-        # ── Debug overlay (always on top) ─────────────────────────────────────
-        _dbg_lines = [
-            f"F:{_D['frame']}  {gs.state}",
-            f"MBD:{_D['mbd']} FD:{_D['fd']} FU:{_D['fu']}",
-            f"taps:{_D['taps']} js:{_D['js_up']} xy:{_D['xy']}",
-        ]
-        _dbg_surf = pygame.Surface((300, 44), pygame.SRCALPHA)
-        _dbg_surf.fill((0, 0, 0, 210))
-        screen.blit(_dbg_surf, (2, 2))
-        for _di, _dl in enumerate(_dbg_lines):
-            screen.blit(font_sm.render(_dl, True, (255, 80, 80)), (6, 4 + _di * 14))
-
         pygame.display.flip()
         await asyncio.sleep(0)   # yield to browser event loop (pygbag requirement)
 
