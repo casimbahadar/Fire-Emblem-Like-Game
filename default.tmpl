@@ -68,7 +68,6 @@ async def custom_site():
 
     def compose():
         pygame.display.update()
-        window.chromakey(None, *screen.get_colorkey(), 40)
 
     pygame.init()
     pygame.font.init()
@@ -132,33 +131,36 @@ async def custom_site():
     compose()
 
 
-    # preloader will change dir and prepend it to sys.path
-    platform.run_main(PyConfig, loaderhome= appdir / "assets", loadermain=None)
-
-    # yield briefly so run_main can finish env setup; no need to wait for
-    # embed.counter() since loadermain=None means the preloader never runs main
-    await asyncio.sleep(0.5)
-
     main_path = appdir / "assets" / "main.py"
 
-    # cleanup
+    # Set up Python path so the game's imports work.
+    # Skip platform.run_main — with loadermain=None it can stall the event loop.
+    import os
+    _assets = str(appdir / "assets")
+    if _assets not in sys.path:
+        sys.path.insert(0, _assets)
+    try:
+        os.chdir(_assets)
+    except Exception:
+        pass
+
+    # Clear loading screen
     screen.fill( (0,0,0,0) )
     pygame.display.flip()
 
-    # Import game as a module (not __main__) so asyncio.run guard is skipped,
-    # then directly await main() in the existing event loop — avoids nested
-    # asyncio.run errors in the WASM runtime.
+    # exec() the game's main.py into a fresh namespace, then await main().
+    # More reliable in WASM than importlib.util.spec_from_file_location,
+    # which can silently return None causing AttributeError before the
+    # error screen even renders.
+    _ns = {"__name__": "__main__", "__file__": str(main_path)}
     try:
-        import importlib.util as _ilu
-        _spec = _ilu.spec_from_file_location("main", str(main_path))
-        _mod = _ilu.module_from_spec(_spec)
-        _spec.loader.exec_module(_mod)
-        await _mod.main()
+        exec(open(str(main_path)).read(), _ns)
+        await _ns["main"]()
     except Exception as _e:
         import traceback
         _tb = traceback.format_exc()
         print("GAME LAUNCH ERROR:", _tb)
-        # Show error on screen so it's visible without opening browser console
+        # Show error on screen
         screen2 = pygame.display.set_mode([800, 400])
         screen2.fill((20, 0, 0))
         _ef = pygame.font.Font(None, 22)
