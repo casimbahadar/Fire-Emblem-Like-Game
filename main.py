@@ -538,8 +538,11 @@ async def main():
             do_action("confirm")
 
     # ── Per-finger tap tracking (populated in the FINGERDOWN/MOTION/UP handlers) ─
-    _finger_start  = {}   # finger_id → (norm_x, norm_y) at touch-down
-    _finger_moved  = {}   # finger_id → bool (True if drag exceeded threshold)
+    _finger_start    = {}   # finger_id → (norm_x, norm_y) at touch-down
+    _finger_moved    = {}   # finger_id → bool (True if drag exceeded threshold)
+    _finger_consumed = {}   # finger_id → bool (True if FINGERDOWN already fired handle_tap)
+    # Screens where a tap-to-continue fires immediately on FINGERDOWN (no drag ambiguity)
+    _TAP_ON_DOWN_STATES = {STATE_TITLE, STATE_PROLOGUE, STATE_SCENE}
 
     # ── Main loop ─────────────────────────────────────────────────────────────
     running = True
@@ -572,16 +575,26 @@ async def main():
 
             # ── Finger / touch events (pinch-zoom + tap detection) ────────────
             elif event.type == pygame.FINGERDOWN:
-                _finger_start[event.finger_id] = (event.x, event.y)
-                _finger_moved[event.finger_id] = False
-                touch.handle_finger_down(event.finger_id, event.x, event.y,
+                fid = event.finger_id
+                _finger_start[fid]    = (event.x, event.y)
+                _finger_moved[fid]    = False
+                _finger_consumed[fid] = False
+                touch.handle_finger_down(fid, event.x, event.y,
                                          SCREEN_WIDTH, SCREEN_HEIGHT)
+                # For simple "tap to continue" screens fire immediately on touch-down
+                # so the response feels instant and we don't depend on FINGERUP timing.
+                if gs.state in _TAP_ON_DOWN_STATES:
+                    mx = int(event.x * SCREEN_WIDTH)
+                    my = int(event.y * SCREEN_HEIGHT)
+                    handle_tap(mx, my)
+                    _finger_consumed[fid] = True
             elif event.type == pygame.FINGERMOTION:
-                if event.finger_id in _finger_start:
-                    ox, oy = _finger_start[event.finger_id]
+                fid = event.finger_id
+                if fid in _finger_start:
+                    ox, oy = _finger_start[fid]
                     if abs(event.x - ox) > 0.02 or abs(event.y - oy) > 0.02:
-                        _finger_moved[event.finger_id] = True
-                zdelta = touch.handle_finger_motion(event.finger_id, event.x, event.y,
+                        _finger_moved[fid] = True
+                zdelta = touch.handle_finger_motion(fid, event.x, event.y,
                                                     SCREEN_WIDTH, SCREEN_HEIGHT)
                 if zdelta > 0:
                     renderer.zoom_in()
@@ -590,10 +603,12 @@ async def main():
                     renderer.zoom_out()
                     if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
             elif event.type == pygame.FINGERUP:
-                was_drag = _finger_moved.pop(event.finger_id, False)
-                _finger_start.pop(event.finger_id, None)
-                touch.handle_finger_up(event.finger_id)
-                if not was_drag:
+                fid = event.finger_id
+                was_drag     = _finger_moved.pop(fid, False)
+                was_consumed = _finger_consumed.pop(fid, False)
+                _finger_start.pop(fid, None)
+                touch.handle_finger_up(fid)
+                if not was_drag and not was_consumed:
                     # Finger coords are normalised [0,1]; convert to screen pixels
                     mx = int(event.x * SCREEN_WIDTH)
                     my = int(event.y * SCREEN_HEIGHT)
