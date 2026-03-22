@@ -397,13 +397,30 @@ height="1px"
     </canvas>
 
     <script>
-    // Prevent default touch behavior (scroll/zoom) on the canvas so SDL receives raw touch events.
+    // Touch→mouse bridge: converts touch events to mouse events for SDL2/pygame.
+    // Tap detection uses MOUSEBUTTONDOWN only (FINGERUP removed from Python side).
     (function() {
         var c = document.getElementById('canvas');
         if (!c) return;
-        c.addEventListener('touchstart', function(e) { e.preventDefault(); }, {passive: false});
-        c.addEventListener('touchend',   function(e) { e.preventDefault(); }, {passive: false});
-        c.addEventListener('touchmove',  function(e) { e.preventDefault(); }, {passive: false});
+        function synth(type, t, buttons) {
+            c.dispatchEvent(new MouseEvent(type, {
+                bubbles: true, cancelable: true,
+                clientX: t.clientX, clientY: t.clientY,
+                button: 0, buttons: buttons
+            }));
+        }
+        c.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            synth('mousedown', e.changedTouches[0], 1);
+        }, {passive: false});
+        c.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            synth('mouseup', e.changedTouches[0], 0);
+        }, {passive: false});
+        c.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            synth('mousemove', e.changedTouches[0], 1);
+        }, {passive: false});
     })();
     </script>
 

@@ -580,9 +580,7 @@ async def main():
                     renderer.zoom_out()
                     if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
             elif event.type == pygame.FINGERUP:
-                tap = touch.handle_finger_up(event.finger_id)
-                if tap:
-                    handle_tap(*tap)
+                touch.handle_finger_up(event.finger_id)  # cleans up pinch state only
 
             # ── Mouse wheel zoom ──────────────────────────────────────────────
             elif event.type == pygame.MOUSEWHEEL:
