@@ -543,6 +543,10 @@ async def main():
     _finger_consumed = {}   # finger_id → bool (True if FINGERDOWN already fired handle_tap)
     # Screens where a tap-to-continue fires immediately on FINGERDOWN (no drag ambiguity)
     _TAP_ON_DOWN_STATES = {STATE_TITLE, STATE_PROLOGUE, STATE_SCENE}
+    # SDL2-web synthesises a MOUSEBUTTONDOWN from each touch event in addition to
+    # FINGERDOWN.  Track active finger count so we can skip the synthetic mouse
+    # event and avoid double-processing every tap on mobile.
+    _active_touch_fingers = 0
 
     # ── Main loop ─────────────────────────────────────────────────────────────
     running = True
@@ -555,7 +559,10 @@ async def main():
 
             # ── Mouse / Touch input ───────────────────────────────────────────
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                handle_tap(*event.pos)
+                # Skip synthetic mouse events produced by SDL from touch input;
+                # those are handled via FINGERDOWN/FINGERUP to avoid double-actions.
+                if _active_touch_fingers == 0:
+                    handle_tap(*event.pos)
 
             elif event.type == pygame.MOUSEMOTION:
                 # Drag-to-scroll the map
@@ -575,6 +582,7 @@ async def main():
 
             # ── Finger / touch events (pinch-zoom + tap detection) ────────────
             elif event.type == pygame.FINGERDOWN:
+                _active_touch_fingers += 1
                 fid = event.finger_id
                 _finger_start[fid]    = (event.x, event.y)
                 _finger_moved[fid]    = False
@@ -603,6 +611,7 @@ async def main():
                     renderer.zoom_out()
                     if gs.game_map: renderer.center_camera(gs.game_map,gs.cursor_x,gs.cursor_y)
             elif event.type == pygame.FINGERUP:
+                _active_touch_fingers = max(0, _active_touch_fingers - 1)
                 fid = event.finger_id
                 was_drag     = _finger_moved.pop(fid, False)
                 was_consumed = _finger_consumed.pop(fid, False)
