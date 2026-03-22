@@ -499,6 +499,11 @@ async def main():
     def handle_tap(mx, my):
         nonlocal showing_help
         if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
+            # Any tap dismisses queued messages or active boss dialogs first,
+            # before any gameplay interaction is attempted.
+            if gs.message_queue or showing_boss_dialog:
+                do_action("confirm")
+                return
             btn_action = touch.handle_mouse_down(mx, my)
             if btn_action:
                 if btn_action == "zoom_in":
@@ -529,8 +534,36 @@ async def main():
         elif gs.state == STATE_SCENE:
             do_action("confirm")
         elif gs.state == STATE_PREP:
-            if mx > SCREEN_WIDTH * 3 // 4 and my > SCREEN_HEIGHT - 60:
+            # Layout mirrors _render_prep_screen in renderer.py
+            _TAB_Y = 62; _TAB_H = 32; _CONTENT_Y = _TAB_Y + _TAB_H + 8  # 102
+            _tab_w = SCREEN_WIDTH // 4  # 256 per tab
+            if _TAB_Y <= my < _TAB_Y + _TAB_H:
+                # Tap on a tab header → switch tab
+                tap_tab = mx // _tab_w
+                if 0 <= tap_tab < len(PREP_TAB_NAMES):
+                    gs.prep_tab = tap_tab
+                    gs.prep_cursor = 0
+            elif my >= SCREEN_HEIGHT - 40:
+                # Bottom bar → start battle
                 do_action("battle")
+            elif my >= _CONTENT_Y:
+                tab = getattr(gs, 'prep_tab', 0)
+                if tab == PREP_TAB_DEPLOY:
+                    row_idx = (my - _CONTENT_Y) // 44
+                    if 0 <= row_idx < len(gs.prep_available_units):
+                        gs.prep_cursor = row_idx
+                        do_action("confirm")   # toggle deploy
+                elif tab == PREP_TAB_SHOP:
+                    row_idx = (my - (_CONTENT_Y + 22)) // 48
+                    if 0 <= row_idx < len(list(SHOP_PRICES)):
+                        gs.prep_cursor = row_idx
+                        do_action("confirm")   # buy merc
+                elif tab == PREP_TAB_INVENTORY:
+                    row_idx = (my - _CONTENT_Y) // 56
+                    units_all = gs.prep_selected_units + gs.prep_mercs
+                    if 0 <= row_idx < len(units_all):
+                        gs.prep_cursor = row_idx
+                        do_action("confirm")   # cycle weapon
         elif gs.state == STATE_CHAPTER_INTRO:
             gs.start_player_turn()
             renderer.center_camera(gs.game_map, gs.cursor_x, gs.cursor_y)
@@ -541,8 +574,15 @@ async def main():
     _finger_start    = {}   # finger_id → (norm_x, norm_y) at touch-down
     _finger_moved    = {}   # finger_id → bool (True if drag exceeded threshold)
     _finger_consumed = {}   # finger_id → bool (True if FINGERDOWN already fired handle_tap)
-    # Screens where a tap-to-continue fires immediately on FINGERDOWN (no drag ambiguity)
-    _TAP_ON_DOWN_STATES = {STATE_TITLE, STATE_PROLOGUE, STATE_SCENE}
+    # Screens where a tap-to-continue fires immediately on FINGERDOWN (no drag ambiguity).
+    # All pure "press anything to continue" screens belong here; only gameplay screens
+    # (PLAYER_TURN, PREP) stay FINGERUP-based so drag-scroll can be distinguished.
+    _TAP_ON_DOWN_STATES = {
+        STATE_TITLE, STATE_MODE_SELECT,
+        STATE_PROLOGUE, STATE_SCENE,
+        STATE_CHAPTER_INTRO,
+        STATE_VICTORY, STATE_GAME_OVER,
+    }
     # SDL2-web synthesises a MOUSEBUTTONDOWN from each touch event in addition to
     # FINGERDOWN.  Track active finger count so we can skip the synthetic mouse
     # event and avoid double-processing every tap on mobile.
@@ -600,7 +640,10 @@ async def main():
                 fid = event.finger_id
                 if fid in _finger_start:
                     ox, oy = _finger_start[fid]
-                    if abs(event.x - ox) > 0.02 or abs(event.y - oy) > 0.02:
+                    # 0.05 normalised ≈ 20 CSS px on a 400px-wide phone.
+                    # This is above normal tap jitter (5-15 px) but below
+                    # intentional scroll swipes, so taps aren't misread as drags.
+                    if abs(event.x - ox) > 0.05 or abs(event.y - oy) > 0.05:
                         _finger_moved[fid] = True
                 zdelta = touch.handle_finger_motion(fid, event.x, event.y,
                                                     SCREEN_WIDTH, SCREEN_HEIGHT)
