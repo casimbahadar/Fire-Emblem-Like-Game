@@ -330,6 +330,10 @@ config = {
             bottom: 0;
             left: 0;
             right: 0;
+
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         body {
@@ -391,6 +395,33 @@ width="1px"
 height="1px"
     oncontextmenu="event.preventDefault()" tabindex=1>
     </canvas>
+
+    <script>
+    // Touch→mouse bridge: SDL2 emscripten already handles mousedown/mouseup on the canvas.
+    (function() {
+        var c = document.getElementById('canvas');
+        if (!c) return;
+        function synth(type, t, buttons) {
+            c.dispatchEvent(new MouseEvent(type, {
+                bubbles: true, cancelable: true,
+                clientX: t.clientX, clientY: t.clientY,
+                button: 0, buttons: buttons
+            }));
+        }
+        c.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            synth('mousedown', e.changedTouches[0], 1);
+        }, {passive: false});
+        c.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            synth('mouseup', e.changedTouches[0], 0);
+        }, {passive: false});
+        c.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            synth('mousemove', e.changedTouches[0], 1);
+        }, {passive: false});
+    })();
+    </script>
 
     <div id=html></div>
 
