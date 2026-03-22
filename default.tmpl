@@ -281,6 +281,11 @@ config = {
             bottom: 0;
             left: 0;
             right: 0;
+
+            /* Prevent browser from consuming touch events (scroll/zoom) before SDL sees them */
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         body {
