@@ -124,18 +124,26 @@ async def custom_site():
         screen.blit(_dbfont.render(_status, True, (180,180,180)), (marginx, marginy + uy(100)))
 
     # Wait for zip mount + overlayfs to complete.
-    # Safety valve: if the download finishes but track.ready never flips True
-    # (mount stalled), break after 5 extra seconds so the game can still launch.
+    # Two escape hatches:
+    #   1. track.ready → normal completion
+    #   2. 60-second wall-clock limit → prevents infinite hang on mobile
+    #      where track.ready sometimes never fires (e.g. iOS/Safari quirks)
+    import time as _time
+    _t0 = _time.monotonic()
     _post_dl = 0
     while not track.ready:
         pg_bar(track.pos)
         compose()
         await asyncio.sleep(.1)
+        _elapsed = _time.monotonic() - _t0
         if track.len and track.pos >= track.len:
             _post_dl += 1
-            if _post_dl >= 50:   # 50 × 0.1 s = 5 s grace period
-                print("APK mount stalled — proceeding anyway")
+            if _post_dl >= 50:   # 50 × 0.1 s = 5 s after download completes
+                print("APK mount stalled after download — proceeding")
                 break
+        elif _elapsed > 60:      # 60 s hard limit if download never starts
+            print(f"APK load timeout after {_elapsed:.0f}s — proceeding")
+            break
 
     # fill bar to 100%
     pg_bar(track.len)
