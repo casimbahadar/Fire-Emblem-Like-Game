@@ -537,10 +537,27 @@ async def main():
         elif gs.state in (STATE_VICTORY, STATE_GAME_OVER):
             do_action("confirm")
 
+    # ── JS→Python touch tap polling (pygbag web only) ─────────────────────────
+    try:
+        import platform as _plat
+        _js_win = getattr(_plat, 'window', None)
+    except Exception:
+        _js_win = None
+
     # ── Main loop ─────────────────────────────────────────────────────────────
     running = True
     while running:
         clock.tick(FPS)
+
+        # Poll touch tap set by JS (bypasses SDL which ignores synthetic events)
+        if _js_win is not None:
+            try:
+                if int(getattr(_js_win, '_tap_pending', 0)):
+                    _js_win._tap_pending = 0
+                    handle_tap(int(getattr(_js_win, '_tap_x', 0)),
+                               int(getattr(_js_win, '_tap_y', 0)))
+            except Exception:
+                pass
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
