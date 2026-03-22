@@ -1,7 +1,7 @@
 <html lang="en-us"><script src="https://pygame-web.github.io/cdn/0.9.3/pythons.js" type=module id=site data-LINES=50 data-CONSOLE=25 data-python=python3.12 data-os=vtx,fs,snd,gui async defer>#<!--
 
 print("""
-Loading fire-emblem-like-game from fire-emblem-like-game.apk
+Loading fire-emblem-like-game from sengoku-tactics.apk
     Pygbag Version : 0.9.3
     Template Version : 0.9.0
     Python  : 3.12
@@ -83,12 +83,12 @@ async def custom_site():
 
 
 
-    apk = "fire-emblem-like-game.apk"
+    apk = "sengoku-tactics.apk"
 
-    bundle = "fire-emblem-like-game"
+    bundle = "sengoku-tactics"
 
     # the C or js loader could do that but be explicit.
-    appdir = Path(f"/data/data/{bundle}") # /data/data/fire-emblem-like-game
+    appdir = Path(f"/data/data/{bundle}") # /data/data/sengoku-tactics
     appdir.mkdir()
 
 
@@ -233,7 +233,7 @@ config = {
     user_canvas_managed : 0,
     ume_block : 1,
     can_close : 0,
-    archive : "fire-emblem-like-game",
+    archive : "sengoku-tactics",
     gui_debug : 3,
     cdn : "https://pygame-web.github.io/cdn/0.9.3/",
     autorun : 0,
