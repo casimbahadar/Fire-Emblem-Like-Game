@@ -54,7 +54,6 @@ async def custom_site():
     import sys
     import asyncio
     import platform
-    import json
     from pathlib import Path
 
 
@@ -83,86 +82,51 @@ async def custom_site():
 
 
 
-    apk = "sengoku-tactics.apk"
+    import os
 
     bundle = "sengoku-tactics"
+    appdir = Path(f"/data/data/{bundle}")
+    appdir.mkdir(exist_ok=True)
 
-    # the C or js loader could do that but be explicit.
-    appdir = Path(f"/data/data/{bundle}") # /data/data/sengoku-tactics
-    appdir.mkdir()
-
-
-    # mount apk
-
-    cfg = {
-        "io": "url",
-        "type":"mount",
-        "mount" : {
-            "point" : appdir.as_posix(),
-            "path" : "/",
-        },
-        "path" : f"/ => {appdir.as_posix()}",
-    }
-
-
-    track = platform.window.MM.prepare(apk, json.dumps(cfg))
-
-    marginx = ux(.020) # 20%
-    marginy = uy(.045) # 45%
-
-
-    _dbfont = pygame.font.Font(None, 20)
-
-    def pg_bar(pos):
-        nonlocal marginx, marginy
-        total = track.len or 10
-        slot = ux(.060) / total
-        pygame.draw.rect(screen, (10,10,10), (marginx-ux(10), marginy-uy(10), (total*slot)+ux(20), uy(110)))
-        pygame.draw.rect(screen, (0,255,0),  (marginx, marginy, pos*slot, uy(90)))
-        # status line below bar so user can see what's happening
-        _status = f"APK: {int(track.pos)}/{int(track.len) if track.len else '?'}  ready={bool(track.ready)}"
-        screen.blit(_dbfont.render(_status, True, (180,180,180)), (marginx, marginy + uy(100)))
-
-    # Wait for zip mount + overlayfs to complete.
-    # We use TWO conditions so either one can unblock us:
-    #   1. track.ready becomes True (normal completion)
-    #   2. main_path actually exists in the VFS (mount succeeded)
-    #   3. 60-second wall-clock hard limit (prevents infinite hang)
-    import time as _time
-    import os
-    _t0 = _time.monotonic()
-    _post_dl = 0
-    _loop_iters = 0
-    _ready_at_start = bool(track.ready)   # diagnostic: was ready immediately?
     main_path = appdir / "assets" / "main.py"
+    marginx = ux(.020)
+    marginy = uy(.045)
+    _font = pygame.font.Font(None, 22)
 
-    while True:
-        _loop_iters += 1
-        _elapsed = _time.monotonic() - _t0
+    def _show(msg):
+        screen.fill((20, 20, 20))
+        screen.blit(_font.render(msg, True, (180, 220, 180)), (marginx, marginy))
+        pygame.display.update()
 
-        # Condition 1: file is actually there
-        if main_path.exists():
-            print(f"main.py found after {_elapsed:.1f}s ({_loop_iters} iters)")
-            break
-
-        # Condition 2: track says ready (and we've waited at least 0.5 s)
-        if track.ready and _elapsed > 0.5:
-            print(f"track.ready after {_elapsed:.1f}s, file not yet visible — waiting")
-
-        # Condition 3: timeout
-        if _elapsed > 90:
-            print(f"TIMEOUT after {_elapsed:.0f}s: track.ready={bool(track.ready)} "
-                  f"pos={track.pos} len={track.len} ready_at_start={_ready_at_start}")
-            break
-
-        pg_bar(track.pos)
-        compose()
-        await asyncio.sleep(.1)
-
-    # fill bar to 100%
-    pg_bar(track.len)
+    # Download and extract the game archive.
+    # pygbag --build produces both .apk (zip) and .tar.gz.
+    # Use tar.gz because tarfile works with streaming (non-seekable) fopen.
+    _show("Downloading game...")
     compose()
     await asyncio.sleep(0)
+
+    _extract_err = None
+    try:
+        import tarfile
+        async with platform.fopen("sengoku-tactics.tar.gz", "rb") as _arc:
+            _tar = tarfile.open(fileobj=_arc, mode="r:gz")
+            try:
+                _tar.extractall(path=appdir.as_posix(), filter='tar')
+            except TypeError:
+                _tar.extractall(path=appdir.as_posix())
+            _tar.close()
+    except Exception as _extract_err_exc:
+        import traceback
+        _extract_err = traceback.format_exc()
+        print("Archive extract error:\n", _extract_err)
+
+    _show("Starting Python runtime...")
+    compose()
+    await asyncio.sleep(0)
+
+    # Wait for WASM/Python runtime to be ready
+    while embed.counter() < 0:
+        await asyncio.sleep(.1)
 
     _assets = str(appdir / "assets")
 
@@ -173,33 +137,20 @@ async def custom_site():
     except Exception as _cd_err:
         print("chdir failed:", _cd_err)
 
-    # Show status on canvas
-    _lf = pygame.font.Font(None, 24)
-    screen.blit(_lf.render("Launching game...", True, (200, 200, 200)),
-                (marginx, marginy + uy(100)))
-    pygame.display.update()
+    _ns = {"__name__": "__main__", "__file__": str(main_path)}
+
+    _show("Launching game...")
     await asyncio.sleep(0)
 
     screen.fill((0, 0, 0, 0))
     pygame.display.update()
     await asyncio.sleep(0)
 
-    _ns = {"__name__": "__main__", "__file__": str(main_path)}
-
-    # Collect diagnostics to show alongside any error
-    try:
-        _dd = os.listdir("/data/data") if os.path.isdir("/data/data") else []
-    except Exception:
-        _dd = ["<error listing /data/data>"]
-    try:
-        _ad = os.listdir(str(appdir)) if os.path.isdir(str(appdir)) else []
-    except Exception:
-        _ad = ["<error listing appdir>"]
-
-    _diag = (f"track.ready={bool(track.ready)} pos={track.pos} len={track.len} "
-             f"ready_at_start={_ready_at_start} iters={_loop_iters}\n"
-             f"/data/data/={_dd}\n"
-             f"appdir={_ad}")
+    # Collect diagnostics
+    _dd = os.listdir("/data/data") if os.path.isdir("/data/data") else []
+    _ad = os.listdir(str(appdir)) if os.path.isdir(str(appdir)) else []
+    _diag = (f"extract_err={_extract_err}\n"
+             f"/data/data/={_dd}\nappdir={_ad}")
 
     try:
         print("Reading:", str(main_path))
@@ -270,7 +221,7 @@ config = {
     ume_block : 1,
     can_close : 0,
     archive : "sengoku-tactics",
-    gui_debug : 0,
+    gui_debug : 3,
     cdn : "https://pygame-web.github.io/cdn/0.9.3/",
     autorun : 0,
     PYBUILD : "3.12"
@@ -331,14 +282,10 @@ config = {
             left: 0;
             right: 0;
 
+            /* Prevent browser from consuming touch events (scroll/zoom) before SDL sees them */
             touch-action: none;
             -webkit-user-select: none;
             user-select: none;
-        }
-
-        /* Never let debug/console overlays swallow touch events meant for the canvas */
-        #pyconsole, #terminal, #crt {
-            pointer-events: none;
         }
 
         body {
@@ -402,13 +349,30 @@ height="1px"
     </canvas>
 
     <script>
-    // Prevent browser scroll/zoom on canvas touches so SDL receives all finger events.
+    // Translate touch events to mouse events so SDL2 sees MOUSEBUTTONDOWN/UP.
+    // SDL2's emscripten runtime already listens for mousedown/mouseup on the canvas.
     (function() {
         var c = document.getElementById('canvas');
         if (!c) return;
-        ['touchstart','touchmove','touchend'].forEach(function(t) {
-            c.addEventListener(t, function(e) { e.preventDefault(); }, {passive: false});
-        });
+        function synth(type, t, buttons) {
+            c.dispatchEvent(new MouseEvent(type, {
+                bubbles: true, cancelable: true,
+                clientX: t.clientX, clientY: t.clientY,
+                button: 0, buttons: buttons
+            }));
+        }
+        c.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            synth('mousedown', e.changedTouches[0], 1);
+        }, {passive: false});
+        c.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            synth('mouseup', e.changedTouches[0], 0);
+        }, {passive: false});
+        c.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            synth('mousemove', e.changedTouches[0], 1);
+        }, {passive: false});
     })();
     </script>
 
