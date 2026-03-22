@@ -396,38 +396,14 @@ height="1px"
     oncontextmenu="event.preventDefault()" tabindex=1>
     </canvas>
 
-    <!-- Hidden input: JS writes "x,y" on tap; Python reads and clears it each frame -->
-    <input type="hidden" id="_tapdata" value="">
-
     <script>
-    // JS→Python tap bridge via DOM hidden input.
-    // platform.document.getElementById is confirmed working in pygbag.
+    // Prevent browser scroll/zoom on canvas touches so SDL receives all finger events.
     (function() {
         var c = document.getElementById('canvas');
         if (!c) return;
-        var _startX = 0, _startY = 0, _moved = false;
-        c.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            var t = e.changedTouches[0];
-            _startX = t.clientX; _startY = t.clientY; _moved = false;
-        }, {passive: false});
-        c.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-            var t = e.changedTouches[0];
-            var dx = t.clientX - _startX, dy = t.clientY - _startY;
-            if (dx*dx + dy*dy > 100) _moved = true;  // 10px drag threshold
-        }, {passive: false});
-        c.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            if (!_moved) {
-                var t = e.changedTouches[0];
-                var rect = c.getBoundingClientRect();
-                var tx = Math.round((t.clientX - rect.left) * c.width  / Math.max(rect.width,  1));
-                var ty = Math.round((t.clientY - rect.top)  * c.height / Math.max(rect.height, 1));
-                document.getElementById('_tapdata').value = tx + ',' + ty;
-            }
-            _moved = false;
-        }, {passive: false});
+        ['touchstart','touchmove','touchend'].forEach(function(t) {
+            c.addEventListener(t, function(e) { e.preventDefault(); }, {passive: false});
+        });
     })();
     </script>
 
