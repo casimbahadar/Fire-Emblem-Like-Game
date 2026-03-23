@@ -153,6 +153,8 @@ class Renderer:
             self._render_title(gs)
         elif s == STATE_MODE_SELECT:
             self._render_mode_select(gs)
+        elif s == STATE_MODE_CONFIRM:
+            self._render_mode_confirm(gs)
         elif s == STATE_PROLOGUE:
             self._render_prologue(gs)
         elif s == STATE_SCENE:
@@ -317,6 +319,43 @@ class Renderer:
         for h in hints:
             self._blit_center(self.font_sm.render(h, True, LIGHT_GREY), cx, hy)
             hy += 22
+
+    # ── Mode Confirm ─────────────────────────────────────────────────────────
+    def _render_mode_confirm(self, gs):
+        '''Show selected options and ask for confirmation before starting.'''
+        from game.constants import DEPLOY_FREE
+        for i in range(SCREEN_HEIGHT):
+            t = i / SCREEN_HEIGHT
+            pygame.draw.line(self.screen,
+                             (int(20+t*60), int(10+t*20), int(5+t*10)),
+                             (0, i), (SCREEN_WIDTH, i))
+        cx = SCREEN_WIDTH // 2
+        cy = SCREEN_HEIGHT // 2
+
+        self._blit_center(self.font_lg.render("Confirm Settings", True, GOLD), cx, cy - 120)
+        pygame.draw.line(self.screen, GOLD, (cx-200, cy-92), (cx+200, cy-92), 2)
+
+        diff_str   = "Classic" if gs.classic_mode else "Casual"
+        deploy_str = "Free Choice" if gs.deploy_mode == DEPLOY_FREE else "Forced"
+        self._blit_center(self.font_md.render(f"Difficulty:  {diff_str}", True, CREAM), cx, cy - 50)
+        self._blit_center(self.font_md.render(f"Deployment:  {deploy_str}", True, CREAM), cx, cy - 20)
+
+        cursor = getattr(gs, '_confirm_cursor', 0)
+        # Yes button
+        yes_border = GOLD if cursor == 0 else (80, 80, 80)
+        yes_bg     = (20, 50, 20) if cursor == 0 else (20, 20, 20)
+        self._draw_rounded_box(cx - 150, cy + 30, 120, 50, yes_bg, yes_border, r=8)
+        self._blit_center(self.font_md.render("Yes", True,
+            GOLD if cursor == 0 else LIGHT_GREY), cx - 90, cy + 55)
+        # No button
+        no_border = GOLD if cursor == 1 else (80, 80, 80)
+        no_bg     = (50, 20, 20) if cursor == 1 else (20, 20, 20)
+        self._draw_rounded_box(cx + 30, cy + 30, 120, 50, no_bg, no_border, r=8)
+        self._blit_center(self.font_md.render("No", True,
+            GOLD if cursor == 1 else LIGHT_GREY), cx + 90, cy + 55)
+
+        self._blit_center(self.font_sm.render(
+            "Left/Right: Switch   Enter/Z: Confirm   Esc/X: Back", True, LIGHT_GREY), cx, cy + 110)
 
     # ── Pre-battle Scene Dialog ───────────────────────────────────────────────
     def _render_scene(self, gs):
@@ -586,17 +625,20 @@ class Renderer:
         if ch:
             pygame.draw.line(self.screen,GOLD,(x0,p.bottom-310),(p.right-10,p.bottom-310),1)
             oy=p.bottom-302
+            obj_limit = p.bottom - 160  # stop before controls section
             self.screen.blit(self.font_sm.render("Objective:",True,YELLOW),(x0,oy)); oy+=18
             for w in self._wrap(ch.objective_detail, p.width-20):
+                if oy >= obj_limit: break
                 self.screen.blit(self.font_sm.render(w,True,CREAM),(x0,oy)); oy+=16
 
             # ── Side objectives ──────────────────────────────────────────────
             side_objs = getattr(gs, 'active_side_objectives', [])
             pending_objs = [so for so in side_objs if not so.completed and not so.failed]
-            if pending_objs:
+            if pending_objs and oy < obj_limit:
                 pygame.draw.line(self.screen,(80,70,30),(x0,oy),(p.right-10,oy),1); oy+=4
                 self.screen.blit(self.font_sm.render("Side:",True,(180,160,80)),(x0,oy)); oy+=16
                 for so in pending_objs[:3]:
+                    if oy >= obj_limit: break
                     short = so.description[:22] + ("…" if len(so.description)>22 else "")
                     self.screen.blit(self.font_sm.render(f"▷ {short}",True,(140,200,120)),(x0,oy)); oy+=14
 
@@ -670,7 +712,9 @@ class Renderer:
     def _render_message_box(self, gs):
         if not gs.message_queue: return
         msg=gs.message_queue[0]
-        box=pygame.Rect(SCREEN_WIDTH//2-310,SCREEN_HEIGHT-100,620,78)
+        map_w = SCREEN_WIDTH - UI_PANEL_WIDTH
+        box_w = min(620, map_w - 20)
+        box=pygame.Rect(map_w//2 - box_w//2, SCREEN_HEIGHT-100, box_w, 78)
         pygame.draw.rect(self.screen,(12,12,28),box)
         pygame.draw.rect(self.screen,GOLD,box,2)
         ms=self.font_md.render(msg,True,WHITE)

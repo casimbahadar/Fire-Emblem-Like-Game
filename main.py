@@ -187,10 +187,26 @@ async def main():
             elif action == "confirm":
                 gs.classic_mode  = (getattr(gs, '_mode_cursor', 0) == 0)
                 gs.deploy_mode   = DEPLOY_FREE if getattr(gs, '_deploy_cursor', 0) == 1 else DEPLOY_FORCED
-                gs.prologue_idx  = 0
-                gs.state         = STATE_PROLOGUE
+                gs._confirm_cursor = 0  # 0 = Yes, 1 = No
+                gs.state         = STATE_MODE_CONFIRM
             elif action == "cancel":
                 gs.state = STATE_TITLE
+            return
+
+        # ── Mode confirm screen ──────────────────────────────────────────────
+        if gs.state == STATE_MODE_CONFIRM:
+            if action == "left":
+                gs._confirm_cursor = 0
+            elif action == "right":
+                gs._confirm_cursor = 1
+            elif action == "confirm":
+                if getattr(gs, '_confirm_cursor', 0) == 0:
+                    gs.prologue_idx = 0
+                    gs.state = STATE_PROLOGUE
+                else:
+                    gs.state = STATE_MODE_SELECT
+            elif action == "cancel":
+                gs.state = STATE_MODE_SELECT
             return
 
         # ── Prologue ──────────────────────────────────────────────────────────
@@ -530,6 +546,12 @@ async def main():
             else:
                 gs._mode_row = 1
                 gs._deploy_cursor = 0 if mx < SCREEN_WIDTH // 2 else 1
+            do_action("confirm")
+        elif gs.state == STATE_MODE_CONFIRM:
+            if mx < SCREEN_WIDTH // 2:
+                gs._confirm_cursor = 0
+            else:
+                gs._confirm_cursor = 1
             do_action("confirm")
         elif gs.state == STATE_PROLOGUE:
             do_action("confirm")
