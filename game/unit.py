@@ -280,8 +280,8 @@ def create_unit_roster():
     # ══════════════════════════════════════════════════════════════════════════
 
     units["nobunaga"] = Unit(
-        "nobunaga", "Oda Nobunaga", CLASS_DAIMYO, FACTION_PLAYER, level=10,
-        weapon_ids=["masamune", "iron_yari"],
+        "nobunaga", "Oda Nobunaga", CLASS_DAIMYO, FACTION_PLAYER, level=3,
+        weapon_ids=["iron_katana", "iron_yari"],
         portrait_color=(200, 80, 30),
         archetype=ARCHETYPE_AMBITIOUS,
         bio=("The Demon King of the Sixth Heaven. Brutal visionary who would\n"
@@ -292,8 +292,8 @@ def create_unit_roster():
         growth_rates={"hp":70,"str":65,"mag":35,"skl":60,"spd":55,"lck":50,"def":60,"res":30}
     )
     units["hideyoshi"] = Unit(
-        "hideyoshi", "Toyotomi Hideyoshi", CLASS_SAMURAI, FACTION_PLAYER, level=7,
-        weapon_ids=["steel_katana", "iron_tanto"],
+        "hideyoshi", "Toyotomi Hideyoshi", CLASS_SAMURAI, FACTION_PLAYER, level=2,
+        weapon_ids=["iron_katana", "iron_tanto"],
         portrait_color=(200, 160, 50),
         archetype=ARCHETYPE_FREE,
         bio=("From sandal-bearer to regent — Hideyoshi's rise is Japan's greatest\n"
@@ -303,8 +303,8 @@ def create_unit_roster():
         growth_rates={"hp":60,"str":55,"mag":30,"skl":60,"spd":60,"lck":65,"def":45,"res":30}
     )
     units["mitsuhide"] = Unit(
-        "mitsuhide", "Akechi Mitsuhide", CLASS_RONIN, FACTION_PLAYER, level=8,
-        weapon_ids=["steel_katana", "silver_katana"],
+        "mitsuhide", "Akechi Mitsuhide", CLASS_RONIN, FACTION_PLAYER, level=3,
+        weapon_ids=["iron_katana", "iron_tanto"],
         portrait_color=(80, 80, 160),
         archetype=ARCHETYPE_NOBLE,
         bio=("The Brilliant General of the Oda. Cultured, precise, deeply loyal\n"
@@ -314,8 +314,8 @@ def create_unit_roster():
         growth_rates={"hp":50,"str":60,"mag":25,"skl":75,"spd":65,"lck":40,"def":55,"res":30}
     )
     units["katsuie"] = Unit(
-        "katsuie", "Shibata Katsuie", CLASS_BERSERKER, FACTION_PLAYER, level=7,
-        weapon_ids=["steel_tetsubo", "iron_nodachi"],
+        "katsuie", "Shibata Katsuie", CLASS_BERSERKER, FACTION_PLAYER, level=3,
+        weapon_ids=["iron_tetsubo", "iron_nodachi"],
         portrait_color=(160, 60, 60),
         archetype=ARCHETYPE_HOTHEAD,
         bio=("'The Devil Shibata' — no castle has stood against his charge,\n"
@@ -325,8 +325,8 @@ def create_unit_roster():
         growth_rates={"hp":80,"str":75,"mag":10,"skl":45,"spd":45,"lck":25,"def":70,"res":15}
     )
     units["nagahide"] = Unit(
-        "nagahide", "Niwa Nagahide", CLASS_SPEARMAN, FACTION_PLAYER, level=6,
-        weapon_ids=["steel_yari", "iron_naginata"],
+        "nagahide", "Niwa Nagahide", CLASS_SPEARMAN, FACTION_PLAYER, level=2,
+        weapon_ids=["iron_yari", "iron_naginata"],
         portrait_color=(80, 140, 80),
         archetype=ARCHETYPE_LOYAL,
         bio=("Trusted administrator and general of the Oda. Where others rush\n"
@@ -336,7 +336,7 @@ def create_unit_roster():
         growth_rates={"hp":60,"str":55,"mag":15,"skl":55,"spd":50,"lck":45,"def":60,"res":30}
     )
     units["ranmaru"] = Unit(
-        "ranmaru", "Mori Ranmaru", CLASS_NINJA, FACTION_PLAYER, level=5,
+        "ranmaru", "Mori Ranmaru", CLASS_NINJA, FACTION_PLAYER, level=1,
         weapon_ids=["iron_tanto", "iron_bow"],
         portrait_color=(200, 130, 160),
         archetype=ARCHETYPE_LOYAL,
@@ -347,7 +347,7 @@ def create_unit_roster():
         growth_rates={"hp":40,"str":50,"mag":25,"skl":80,"spd":75,"lck":60,"def":30,"res":40}
     )
     units["nene"] = Unit(
-        "nene", "Nene", CLASS_KUNOICHI, FACTION_PLAYER, level=5,
+        "nene", "Nene", CLASS_KUNOICHI, FACTION_PLAYER, level=2,
         weapon_ids=["kunai", "iron_bow"],
         portrait_color=(230, 160, 200),
         archetype=ARCHETYPE_FREE,
@@ -358,7 +358,7 @@ def create_unit_roster():
         growth_rates={"hp":40,"str":45,"mag":40,"skl":75,"spd":80,"lck":70,"def":25,"res":55}
     )
     units["oichi"] = Unit(
-        "oichi", "Oichi", CLASS_NOBLE_LADY, FACTION_PLAYER, level=5,
+        "oichi", "Oichi", CLASS_NOBLE_LADY, FACTION_PLAYER, level=2,
         weapon_ids=["heal_staff", "iron_bow"],
         portrait_color=(220, 180, 220),
         archetype=ARCHETYPE_NOBLE,
@@ -369,8 +369,8 @@ def create_unit_roster():
         growth_rates={"hp":40,"str":30,"mag":65,"skl":55,"spd":55,"lck":80,"def":25,"res":70}
     )
     units["toshiie"] = Unit(
-        "toshiie", "Maeda Toshiie", CLASS_SPEARMAN, FACTION_PLAYER, level=6,
-        weapon_ids=["jumonji_yari", "iron_katana"],
+        "toshiie", "Maeda Toshiie", CLASS_SPEARMAN, FACTION_PLAYER, level=2,
+        weapon_ids=["iron_yari", "iron_katana"],
         portrait_color=(60, 160, 200),
         archetype=ARCHETYPE_HOTHEAD,
         bio=("'The Tiger of the Maeda' — Toshiie fights with bold, aggressive\n"
@@ -380,7 +380,7 @@ def create_unit_roster():
         growth_rates={"hp":65,"str":60,"mag":10,"skl":60,"spd":55,"lck":50,"def":60,"res":25}
     )
     units["no"] = Unit(
-        "no", "No (Lady Nōhime)", CLASS_KUNOICHI, FACTION_PLAYER, level=6,
+        "no", "No (Lady Nōhime)", CLASS_KUNOICHI, FACTION_PLAYER, level=2,
         weapon_ids=["iron_tanto", "heal_staff"],
         portrait_color=(180, 100, 160),
         archetype=ARCHETYPE_MYSTIC,
@@ -391,7 +391,7 @@ def create_unit_roster():
         growth_rates={"hp":40,"str":45,"mag":55,"skl":70,"spd":75,"lck":75,"def":30,"res":60}
     )
     units["ina"] = Unit(
-        "ina", "Ina (Komatsuhime)", CLASS_MOUNTED_ARCHER, FACTION_PLAYER, level=5,
+        "ina", "Ina (Komatsuhime)", CLASS_MOUNTED_ARCHER, FACTION_PLAYER, level=2,
         weapon_ids=["iron_bow", "iron_katana"],
         portrait_color=(160, 200, 160),
         archetype=ARCHETYPE_HERO,
@@ -563,7 +563,7 @@ def create_unit_roster():
         growth_rates={"hp":80,"str":75,"mag":30,"skl":65,"spd":55,"lck":55,"def":70,"res":35}
     )
     units["kansuke"] = Unit(
-        "kansuke", "Yamamoto Kansuke", CLASS_RONIN, FACTION_ENEMY, level=9,
+        "kansuke", "Yamamoto Kansuke", CLASS_RONIN, FACTION_ENEMY, level=4,
         weapon_ids=["steel_katana", "iron_yari"],
         portrait_color=(100, 60, 80),
         archetype=ARCHETYPE_STRATEGIST,

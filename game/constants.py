@@ -737,6 +737,7 @@ CLASS_DATA = {
 # ─── Game states ──────────────────────────────────────────────────────────────
 STATE_TITLE         = "title"
 STATE_MODE_SELECT   = "mode_select"
+STATE_MODE_CONFIRM  = "mode_confirm"   # confirmation before starting game
 STATE_PROLOGUE      = "prologue"       # historical Sengoku era intro (once per new game)
 STATE_SCENE         = "scene"          # pre-battle character dialogue cutscene
 STATE_CHAPTER_INTRO = "chapter_intro"

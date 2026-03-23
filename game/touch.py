@@ -31,18 +31,18 @@ class TouchButton:
 
 
 # ── Layout constants ───────────────────────────────────────────────────────────
-BTN = 56          # button size px (larger for fat-finger friendliness)
-PAD = 5           # gap between buttons
+BTN = 44          # button size px (compact but still touchable)
+PAD = 3           # gap between buttons
 
 MAP_W = SCREEN_WIDTH - UI_PANEL_WIDTH
 
-# D-pad (bottom-left of map area)
-_DX = 12
-_DY = SCREEN_HEIGHT - BTN*3 - PAD*2 - 8
+# D-pad (bottom-left corner, with room for End Turn below)
+_DX = 6
+_DY = SCREEN_HEIGHT - BTN*3 - PAD*2 - BTN - PAD - 4
 
-# Action grid (bottom-right of map area — left of UI panel)
-_AX = MAP_W - BTN*4 - PAD*3 - 12
-_AY = SCREEN_HEIGHT - BTN*2 - PAD - 8
+# Action grid (right side of map area, stacked vertically along panel edge)
+_AX = MAP_W - BTN*2 - PAD - 6
+_AY = SCREEN_HEIGHT // 2 + 20
 
 
 def _dpad_rect(col, row):
@@ -52,15 +52,15 @@ def _action_rect(col, row):
     return (_AX + col*(BTN+PAD), _AY + row*(BTN+PAD), BTN, BTN)
 
 def _end_turn_rect():
-    cx = (_DX + BTN*2 + PAD) + ((_AX) - (_DX + BTN*2 + PAD)) // 2
-    return (cx - BTN - PAD//2, _AY + BTN + PAD, BTN*2 + PAD, BTN)
+    '''End Turn button below the D-pad, same width.'''
+    return (_DX, _DY + BTN*3 + PAD*3, BTN*3 + PAD*2, BTN - 4)
 
 # Zoom buttons — top-right corner of map area
-_ZX = MAP_W - BTN*2 - PAD - 8
+_ZX = MAP_W - BTN*2 - PAD - 6
 _ZY = 8
 
 ALL_BUTTONS = [
-    # D-pad
+    # D-pad (bottom-left)
     TouchButton("up",    "Up",    "▲", _dpad_rect(1,0), (50,60,100)),
     TouchButton("left",  "Left",  "◄", _dpad_rect(0,1), (50,60,100)),
     TouchButton("down",  "Down",  "▼", _dpad_rect(1,2), (50,60,100)),
@@ -69,19 +69,17 @@ ALL_BUTTONS = [
     # Confirm / Cancel (center of d-pad area)
     TouchButton("confirm","OK",  "✓", _dpad_rect(1,1), (40,90,50)),
 
-    # Action row 1: Attack | Heal | Talk | Info
+    # Action grid (right edge, 2 columns x 4 rows — clears bottom-center)
     TouchButton("attack",   "Attack",   "⚔",  _action_rect(0,0), (160,40,40)),
     TouchButton("heal",     "Heal",     "♥",  _action_rect(1,0), (40,120,80)),
-    TouchButton("talk",     "Talk",     "!",  _action_rect(2,0), (40,160,80)),
-    TouchButton("info",     "Info",     "i",  _action_rect(3,0), (80,80,160)),
+    TouchButton("talk",     "Talk",     "!",  _action_rect(0,1), (40,160,80)),
+    TouchButton("info",     "Info",     "i",  _action_rect(1,1), (80,80,160)),
+    TouchButton("wait",     "Wait",     "Zz", _action_rect(0,2), (80,80,80)),
+    TouchButton("seize",    "Seize",    "★",  _action_rect(1,2), (160,140,30)),
+    TouchButton("cancel",   "Cancel",   "✕",  _action_rect(0,3), (120,40,40)),
+    TouchButton("help",     "Help",     "?",  _action_rect(1,3), (60,80,120)),
 
-    # Action row 2: Wait | Seize | Cancel | Help
-    TouchButton("wait",   "Wait",   "Zz", _action_rect(0,1), (80,80,80)),
-    TouchButton("seize",  "Seize",  "★",  _action_rect(1,1), (160,140,30)),
-    TouchButton("cancel", "Cancel", "✕",  _action_rect(2,1), (120,40,40)),
-    TouchButton("help",   "Help",   "?",  _action_rect(3,1), (60,80,120)),
-
-    # End Turn — wide button below everything
+    # End Turn — below D-pad
     TouchButton("end_turn","End Turn","▶▶", _end_turn_rect(), (40,60,120)),
 
     # Zoom buttons (top-right of map area)
