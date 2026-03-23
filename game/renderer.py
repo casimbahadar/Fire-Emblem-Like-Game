@@ -231,40 +231,51 @@ class Renderer:
         cx = SCREEN_WIDTH // 2
         cy = SCREEN_HEIGHT // 2
 
-        # _mode_cursor encodes both rows:
-        # row 0 = difficulty (0=Classic, 1=Casual), row 1 = deploy (0=Forced, 1=Free)
-        # We store them as _mode_cursor (0/1) and _deploy_cursor (0/1)
-        mode_sel   = getattr(gs, '_mode_cursor',   0)
-        deploy_sel = getattr(gs, '_deploy_cursor',  0)
-        active_row = getattr(gs, '_mode_row',       0)   # 0=difficulty row, 1=deploy row
+        mode_sel   = getattr(gs, '_mode_cursor',   -1)   # -1 = not yet chosen
+        deploy_sel = getattr(gs, '_deploy_cursor',  -1)   # -1 = not yet chosen
+        active_row = getattr(gs, '_mode_row',       0)    # 0=difficulty, 1=deploy
 
         # ── Header ───────────────────────────────────────────────────────────
         self._blit_center(self.font_lg.render("Choose Your Mode", True, GOLD), cx, cy - 230)
         pygame.draw.line(self.screen, GOLD, (cx-300, cy-202), (cx+300, cy-202), 2)
 
+        # Helper: is this option actively selected (highlight vs chosen-but-dimmed)
+        def _opt_style(row, opt_idx, sel_val):
+            active  = (active_row == row and sel_val == opt_idx)
+            chosen  = (sel_val == opt_idx)
+            if active:
+                return True, True      # highlighted + chosen
+            elif chosen:
+                return False, True     # not highlighted but chosen (checkmark)
+            return False, False        # neither
+
         # ── Row 0: Difficulty ─────────────────────────────────────────────────
         row0_y = cy - 190
 
         # Classic
-        classic_border = GOLD if (active_row==0 and mode_sel==0) else (80,80,80)
-        classic_bg     = (40,20,10) if (active_row==0 and mode_sel==0) else (20,20,20)
+        hl, ch = _opt_style(0, 0, mode_sel)
+        classic_border = GOLD if hl else ((120,180,80) if ch else (80,80,80))
+        classic_bg     = (40,20,10) if hl else (20,20,20)
         self._draw_rounded_box(cx-260, row0_y, 220, 150, classic_bg, classic_border, r=10)
-        self._blit_center(self.font_md.render("⚔  CLASSIC", True,
-            GOLD if (active_row==0 and mode_sel==0) else LIGHT_GREY), cx-150, row0_y+22)
+        prefix = "✓ " if (ch and not hl) else ""
+        self._blit_center(self.font_md.render(f"{prefix}⚔  CLASSIC", True,
+            GOLD if hl else ((180,220,120) if ch else LIGHT_GREY)), cx-150, row0_y+22)
         for i, line in enumerate(["Permanent death.", "Fallen officers lost forever.",
                                    "", "True Bushido."]):
-            col = CREAM if (active_row==0 and mode_sel==0) else (120,120,120)
+            col = CREAM if hl else ((160,180,120) if ch else (120,120,120))
             self._blit_center(self.font_sm.render(line, True, col), cx-150, row0_y+50+i*18)
 
         # Casual
-        casual_border  = GOLD if (active_row==0 and mode_sel==1) else (80,80,80)
-        casual_bg      = (10,30,50) if (active_row==0 and mode_sel==1) else (20,20,20)
+        hl, ch = _opt_style(0, 1, mode_sel)
+        casual_border = GOLD if hl else ((120,180,80) if ch else (80,80,80))
+        casual_bg     = (10,30,50) if hl else (20,20,20)
         self._draw_rounded_box(cx+40, row0_y, 220, 150, casual_bg, casual_border, r=10)
-        self._blit_center(self.font_md.render("✿  CASUAL", True,
-            GOLD if (active_row==0 and mode_sel==1) else LIGHT_GREY), cx+150, row0_y+22)
+        prefix = "✓ " if (ch and not hl) else ""
+        self._blit_center(self.font_md.render(f"{prefix}✿  CASUAL", True,
+            GOLD if hl else ((180,220,120) if ch else LIGHT_GREY)), cx+150, row0_y+22)
         for i, line in enumerate(["Units revive next chapter.", "Focus on story",
                                    "and strategy.", ""]):
-            col = CREAM if (active_row==0 and mode_sel==1) else (120,120,120)
+            col = CREAM if hl else ((160,180,120) if ch else (120,120,120))
             self._blit_center(self.font_sm.render(line, True, col), cx+150, row0_y+50+i*18)
 
         # Active row 0 indicator arrow
@@ -278,25 +289,29 @@ class Renderer:
         self._blit_center(self.font_sm.render("DEPLOYMENT MODE", True, (160,140,60)), cx, row1_y-18)
 
         # Forced
-        forced_border = GOLD if (active_row==1 and deploy_sel==0) else (80,80,80)
-        forced_bg     = (35,15,40) if (active_row==1 and deploy_sel==0) else (20,20,20)
+        hl, ch = _opt_style(1, 0, deploy_sel)
+        forced_border = GOLD if hl else ((120,180,80) if ch else (80,80,80))
+        forced_bg     = (35,15,40) if hl else (20,20,20)
         self._draw_rounded_box(cx-260, row1_y, 220, 130, forced_bg, forced_border, r=10)
-        self._blit_center(self.font_md.render("FORCED", True,
-            GOLD if (active_row==1 and deploy_sel==0) else LIGHT_GREY), cx-150, row1_y+18)
+        prefix = "✓ " if (ch and not hl) else ""
+        self._blit_center(self.font_md.render(f"{prefix}FORCED", True,
+            GOLD if hl else ((180,220,120) if ch else LIGHT_GREY)), cx-150, row1_y+18)
         for i, line in enumerate(["Chapter pre-selects", "key story units.",
                                    "Curated experience."]):
-            col = CREAM if (active_row==1 and deploy_sel==0) else (120,120,120)
+            col = CREAM if hl else ((160,180,120) if ch else (120,120,120))
             self._blit_center(self.font_sm.render(line, True, col), cx-150, row1_y+44+i*18)
 
         # Free
-        free_border = GOLD if (active_row==1 and deploy_sel==1) else (80,80,80)
-        free_bg     = (10,35,20) if (active_row==1 and deploy_sel==1) else (20,20,20)
+        hl, ch = _opt_style(1, 1, deploy_sel)
+        free_border = GOLD if hl else ((120,180,80) if ch else (80,80,80))
+        free_bg     = (10,35,20) if hl else (20,20,20)
         self._draw_rounded_box(cx+40, row1_y, 220, 130, free_bg, free_border, r=10)
-        self._blit_center(self.font_md.render("FREE CHOICE", True,
-            GOLD if (active_row==1 and deploy_sel==1) else LIGHT_GREY), cx+150, row1_y+18)
+        prefix = "✓ " if (ch and not hl) else ""
+        self._blit_center(self.font_md.render(f"{prefix}FREE CHOICE", True,
+            GOLD if hl else ((180,220,120) if ch else LIGHT_GREY)), cx+150, row1_y+18)
         for i, line in enumerate(["Pick any units you", "have unlocked.",
                                    "Full strategic freedom."]):
-            col = CREAM if (active_row==1 and deploy_sel==1) else (120,120,120)
+            col = CREAM if hl else ((160,180,120) if ch else (120,120,120))
             self._blit_center(self.font_sm.render(line, True, col), cx+150, row1_y+44+i*18)
 
         # Active row 1 indicator arrow
@@ -305,16 +320,24 @@ class Renderer:
             self.screen.blit(arr, (cx-300, row1_y+50))
 
         # ── Summary label ─────────────────────────────────────────────────────
-        diff_str   = "Classic" if mode_sel==0 else "Casual"
-        deploy_str = "Forced" if deploy_sel==0 else "Free Choice"
+        diff_str   = {0: "Classic", 1: "Casual"}.get(mode_sel, "---")
+        deploy_str = {0: "Forced", 1: "Free Choice"}.get(deploy_sel, "---")
+        both_chosen = mode_sel >= 0 and deploy_sel >= 0
         label = f"{diff_str}  |  {deploy_str} Deployment"
-        self._blit_center(self.font_md.render(label, True, GOLD), cx, row1_y + 150)
+        self._blit_center(self.font_md.render(label, True,
+            GOLD if both_chosen else (140,130,80)), cx, row1_y + 150)
 
         # ── Controls hint ─────────────────────────────────────────────────────
-        hints = [
-            "Up/Down: Switch row   Left/Right: Switch option",
-            "Enter / Z: Confirm all selections",
-        ]
+        if both_chosen:
+            hints = [
+                "Tap options or use Arrow keys to change",
+                "Enter / Z / Tap: Confirm selections",
+            ]
+        else:
+            hints = [
+                "Tap each option or use Arrow keys + Left/Right",
+                "Select BOTH rows to continue",
+            ]
         hy = row1_y + 175
         for h in hints:
             self._blit_center(self.font_sm.render(h, True, LIGHT_GREY), cx, hy)
@@ -1545,3 +1568,160 @@ class Renderer:
     def _draw_rounded_box(self, x, y, w, h, fill, border, r=6):
         pygame.draw.rect(self.screen, fill,   pygame.Rect(x,y,w,h), border_radius=r)
         pygame.draw.rect(self.screen, border, pygame.Rect(x,y,w,h), 2, border_radius=r)
+
+    # ── Battle Animation Screen ──────────────────────────────────────────────
+    def render_battle_anim(self, anim):
+        '''
+        Render the full-screen battle animation.
+        anim: CombatAnimState instance with all timing/frame data.
+        '''
+        W, H = SCREEN_WIDTH, SCREEN_HEIGHT
+
+        # ── Background ───────────────────────────────────────────────────────
+        for i in range(H):
+            t = i / H
+            r = int(10 + t * 30)
+            g = int(5  + t * 15)
+            b = int(15 + t * 40)
+            pygame.draw.line(self.screen, (r, g, b), (0, i), (W, i))
+
+        # Horizontal divider
+        mid_y = H // 2
+        pygame.draw.line(self.screen, GOLD, (20, mid_y), (W - 20, mid_y), 1)
+
+        att = anim.attacker
+        dfn = anim.defender
+
+        # ── Attacker side (left) ─────────────────────────────────────────────
+        att_x, att_y = W // 4, mid_y
+        att_color = LIGHT_BLUE if att.faction == FACTION_PLAYER else PINK
+
+        # Unit circle + symbol (with attack shake)
+        shake_x = 0
+        if anim.phase == "strike" and not anim.current_round.is_counter:
+            progress = anim.phase_timer / anim.STRIKE_FRAMES
+            if progress < 0.5:
+                shake_x = int(progress * 40)     # lunge right
+            else:
+                shake_x = int((1 - progress) * 40)
+
+        circ_r = 55
+        pygame.draw.circle(self.screen, _darken(att_color, 60),
+                           (att_x + shake_x, att_y - 60), circ_r)
+        pygame.draw.circle(self.screen, att_color,
+                           (att_x + shake_x, att_y - 60), circ_r, 3)
+        sym = self.font_title.render(att.symbol, True, WHITE)
+        self.screen.blit(sym, sym.get_rect(center=(att_x + shake_x, att_y - 60)))
+
+        # Name + class
+        self.screen.blit(self.font_md.render(att.name, True, att_color),
+                         (att_x - 80, att_y - 130))
+        self.screen.blit(self.font_sm.render(f"Lv{att.level} {att.unit_class}", True, LIGHT_GREY),
+                         (att_x - 80, att_y - 108))
+
+        # HP bar (attacker)
+        self._draw_battle_hp(att_x - 80, att_y + 10, 160, anim.att_hp_display,
+                             anim.att_max_hp, att_color)
+
+        # ── Defender side (right) ────────────────────────────────────────────
+        dfn_x, dfn_y = 3 * W // 4, mid_y
+        dfn_color = LIGHT_BLUE if dfn.faction == FACTION_PLAYER else PINK
+
+        # Unit circle + symbol (with counter shake)
+        shake_x2 = 0
+        if anim.phase == "strike" and anim.current_round.is_counter:
+            progress = anim.phase_timer / anim.STRIKE_FRAMES
+            if progress < 0.5:
+                shake_x2 = int(progress * -40)   # lunge left
+            else:
+                shake_x2 = int((1 - progress) * -40)
+
+        pygame.draw.circle(self.screen, _darken(dfn_color, 60),
+                           (dfn_x + shake_x2, dfn_y - 60), circ_r)
+        pygame.draw.circle(self.screen, dfn_color,
+                           (dfn_x + shake_x2, dfn_y - 60), circ_r, 3)
+        sym2 = self.font_title.render(dfn.symbol, True, WHITE)
+        self.screen.blit(sym2, sym2.get_rect(center=(dfn_x + shake_x2, dfn_y - 60)))
+
+        # Name + class
+        nm2 = self.font_md.render(dfn.name, True, dfn_color)
+        self.screen.blit(nm2, (dfn_x + 80 - nm2.get_width(), dfn_y - 130))
+        cls2 = self.font_sm.render(f"Lv{dfn.level} {dfn.unit_class}", True, LIGHT_GREY)
+        self.screen.blit(cls2, (dfn_x + 80 - cls2.get_width(), dfn_y - 108))
+
+        # HP bar (defender)
+        self._draw_battle_hp(dfn_x - 80, dfn_y + 10, 160, anim.def_hp_display,
+                             anim.def_max_hp, dfn_color)
+
+        # ── Damage / Miss / Crit popup ───────────────────────────────────────
+        if anim.phase == "result" and anim.current_round:
+            rnd = anim.current_round
+            # Show on the TARGET side (defender for normal, attacker for counter)
+            popup_x = dfn_x if not rnd.is_counter else att_x
+            popup_y = (dfn_y if not rnd.is_counter else att_y) - 140
+
+            fade = min(1.0, anim.phase_timer / 10)
+            popup_y -= int((1 - fade) * 20)   # float upward
+
+            if not rnd.hit:
+                txt = self.font_lg.render("MISS", True, (180, 180, 180))
+                self.screen.blit(txt, txt.get_rect(center=(popup_x, popup_y)))
+            else:
+                if rnd.crit:
+                    crit_txt = self.font_md.render("CRITICAL!", True, YELLOW)
+                    self.screen.blit(crit_txt,
+                                     crit_txt.get_rect(center=(popup_x, popup_y - 24)))
+                dmg_col = RED if rnd.damage > 0 else LIGHT_GREY
+                dmg_txt = self.font_lg.render(f"-{rnd.damage}", True, dmg_col)
+                self.screen.blit(dmg_txt,
+                                 dmg_txt.get_rect(center=(popup_x, popup_y)))
+
+        # ── "VS" center emblem ───────────────────────────────────────────────
+        vs = self.font_lg.render("VS", True, GOLD)
+        self.screen.blit(vs, vs.get_rect(center=(W // 2, mid_y - 60)))
+
+        # ── Round indicator ──────────────────────────────────────────────────
+        ri = self.font_sm.render(
+            f"Round {anim.round_idx + 1} / {len(anim.rounds)}", True, LIGHT_GREY)
+        self.screen.blit(ri, ri.get_rect(center=(W // 2, H - 60)))
+
+        # ── EXP result (shown at end) ────────────────────────────────────────
+        if anim.phase == "done":
+            result = anim.result
+            lines = []
+            if result.exp_attacker > 0 and not result.attacker_died:
+                lines.append(f"{att.name} gained {result.exp_attacker} EXP")
+            if result.defender_died:
+                lines.append(f"{dfn.name} was defeated!")
+            if result.attacker_died:
+                lines.append(f"{att.name} was defeated!")
+            if result.level_up_att:
+                lines.append(f"{att.name} leveled up!")
+            if result.level_up_def:
+                lines.append(f"{dfn.name} leveled up!")
+
+            y = H - 50 - len(lines) * 24
+            for line in lines:
+                col = YELLOW if "level" in line.lower() else CREAM
+                txt = self.font_md.render(line, True, col)
+                self.screen.blit(txt, txt.get_rect(center=(W // 2, y)))
+                y += 24
+
+            hint = self.font_sm.render("Tap or press Z/Enter to continue", True, LIGHT_GREY)
+            self.screen.blit(hint, hint.get_rect(center=(W // 2, H - 20)))
+
+    def _draw_battle_hp(self, x, y, w, current, maximum, color):
+        '''Draw an HP bar for the battle animation.'''
+        # Label
+        hp_txt = self.font_sm.render(f"HP {int(current)}/{maximum}", True, WHITE)
+        self.screen.blit(hp_txt, (x, y))
+
+        # Bar background
+        bar_y = y + 18
+        pygame.draw.rect(self.screen, (40, 40, 40), (x, bar_y, w, 10))
+
+        # Bar fill
+        ratio = max(0, current / maximum) if maximum > 0 else 0
+        fill_col = (60, 200, 80) if ratio > 0.5 else (YELLOW if ratio > 0.25 else RED)
+        pygame.draw.rect(self.screen, fill_col, (x, bar_y, int(w * ratio), 10))
+        pygame.draw.rect(self.screen, color, (x, bar_y, w, 10), 1)

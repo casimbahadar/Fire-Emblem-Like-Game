@@ -26,6 +26,7 @@ from game.tutorial   import (TUTORIAL_STAGES, TUTORIAL_PLAYER_DEFS,
                               make_tutorial_map, TUTORIAL_CHAPTER_TITLE,
                               TUTORIAL_CHAPTER_SUBTITLE, TUTORIAL_INTRO)
 from game.chapter    import CHAPTERS
+from game.combat_anim import CombatAnimState
 
 
 def _build_tutorial_chapter(gs):
@@ -103,6 +104,7 @@ async def main():
     showing_boss_dialog = False
     in_tutorial       = False
     showing_help      = False   # always-accessible help overlay (?/F1)
+    combat_anim       = None    # CombatAnimState when battle animation playing
 
     def reset_interaction():
         nonlocal preview_target, attack_targets, attack_cursor
@@ -136,10 +138,16 @@ async def main():
 
     def tutorial_event(event_type):
         '''Fire a tutorial event and advance if stage is satisfied.'''
+        nonlocal in_tutorial
         if not gs.tutorial.active:
             return
         if gs.tutorial.check_completion(gs, event_type):
             gs.tutorial.advance()
+            # Tutorial finished naturally — clear the flag so victory
+            # screen transitions to Chapter 1 instead of restarting.
+            if not gs.tutorial.active:
+                in_tutorial = False
+                begin_chapter(0)
 
     # Actions allowed per tutorial stage (gating).
     # "direction" = cursor movement, "confirm"/"cancel" = Z/X keys,
@@ -201,13 +209,14 @@ async def main():
         nonlocal heal_targets, heal_cursor, showing_preview, showing_heal_sel
         nonlocal showing_stat_sheet, stat_sheet_unit
         nonlocal showing_recruit, recruit_target, showing_boss_dialog
+        nonlocal combat_anim
         nonlocal showing_help
 
         # ── Title screen ─────────────────────────────────────────────────────
         if gs.state == STATE_TITLE:
             if action == "confirm":
-                gs._mode_cursor   = 0
-                gs._deploy_cursor = 0
+                gs._mode_cursor   = -1   # no default — player must choose
+                gs._deploy_cursor = -1   # no default — player must choose
                 gs._mode_row      = 0
                 gs.state = STATE_MODE_SELECT
             return
@@ -226,8 +235,13 @@ async def main():
             elif action == "down":
                 gs._mode_row = 1
             elif action == "confirm":
-                gs.classic_mode  = (getattr(gs, '_mode_cursor', 0) == 0)
-                gs.deploy_mode   = DEPLOY_FREE if getattr(gs, '_deploy_cursor', 0) == 1 else DEPLOY_FORCED
+                mode_c   = getattr(gs, '_mode_cursor',   -1)
+                deploy_c = getattr(gs, '_deploy_cursor',  -1)
+                # Both rows must have an active selection before confirming
+                if mode_c < 0 or deploy_c < 0:
+                    return
+                gs.classic_mode  = (mode_c == 0)
+                gs.deploy_mode   = DEPLOY_FREE if deploy_c == 1 else DEPLOY_FORCED
                 gs._confirm_cursor = 0  # 0 = Yes, 1 = No
                 gs.state         = STATE_MODE_CONFIRM
             elif action == "cancel":
@@ -390,12 +404,23 @@ async def main():
                 showing_recruit = False; recruit_target = None
             return
 
+        # ── Battle animation dismiss ─────────────────────────────────────────
+        if combat_anim is not None:
+            if action in ("confirm", "cancel"):
+                combat_anim.dismiss()
+                if combat_anim.finished:
+                    if combat_anim.result.defender_died:
+                        tutorial_event("enemy_defeated")
+                    combat_anim = None
+            return
+
         # ── Combat preview ────────────────────────────────────────────────────
         if showing_preview and preview_target:
             if action == "confirm":
-                result = gs.attack(gs.selected_unit, preview_target)
-                if not preview_target.alive:
-                    tutorial_event("enemy_defeated")
+                atk_unit = gs.selected_unit
+                def_unit = preview_target
+                result = gs.attack(atk_unit, def_unit)
+                combat_anim = CombatAnimState(atk_unit, def_unit, result)
                 reset_interaction()
                 showing_preview = False
             elif action == "cancel":
@@ -573,9 +598,13 @@ async def main():
 
     # ── Tap dispatcher (shared by MOUSEBUTTONDOWN and FINGERUP) ───────────────
     def handle_tap(mx, my):
-        nonlocal showing_help
+        nonlocal showing_help, combat_anim
         _D['taps'] += 1
         _D['xy'] = (mx, my)
+        # Battle animation: tap to skip/dismiss
+        if combat_anim is not None:
+            do_action("confirm")
+            return
         if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
             # Any tap dismisses queued messages or active boss dialogs first,
             # before any gameplay interaction is attempted.
@@ -606,7 +635,9 @@ async def main():
             else:
                 gs._mode_row = 1
                 gs._deploy_cursor = 0 if mx < SCREEN_WIDTH // 2 else 1
-            do_action("confirm")
+            # Only auto-confirm if BOTH choices have been made
+            if getattr(gs, '_mode_cursor', -1) >= 0 and getattr(gs, '_deploy_cursor', -1) >= 0:
+                do_action("confirm")
         elif gs.state == STATE_MODE_CONFIRM:
             if mx < SCREEN_WIDTH // 2:
                 gs._confirm_cursor = 0
@@ -794,13 +825,13 @@ async def main():
                 # ── Title ─────────────────────────────────────────────────────
                 if gs.state == STATE_TITLE:
                     if key in (pygame.K_RETURN, pygame.K_z):
-                        gs._mode_cursor    = 0
-                        gs._deploy_cursor  = 0
+                        gs._mode_cursor    = -1
+                        gs._deploy_cursor  = -1
                         gs._mode_row       = 0
                         gs.state = STATE_MODE_SELECT
                     elif key == pygame.K_s:
-                        gs._mode_cursor    = 0
-                        gs._deploy_cursor  = 0
+                        gs._mode_cursor    = -1
+                        gs._deploy_cursor  = -1
                         gs._mode_row       = 0
                         gs.state = STATE_MODE_SELECT
                     elif key == pygame.K_ESCAPE:
@@ -950,11 +981,18 @@ async def main():
         if gs.state == STATE_ENEMY_TURN:
             gs.run_enemy_turn()
 
+        # ── Update battle animation ──────────────────────────────────────────
+        if combat_anim is not None and not combat_anim.finished:
+            combat_anim.update()
+
         # ── Render ────────────────────────────────────────────────────────────
-        renderer.render(gs, showing_help=showing_help)
+        if combat_anim is not None and not combat_anim.finished:
+            renderer.render_battle_anim(combat_anim)
+        else:
+            renderer.render(gs, showing_help=showing_help)
 
         # ── Overlays on top (order matters) ───────────────────────────────────
-        if gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
+        if combat_anim is None and gs.state in (STATE_PLAYER_TURN, STATE_TUTORIAL):
             # Tutorial overlay (lowest priority)
             if gs.tutorial.active:
                 renderer.render_tutorial(gs.tutorial, gs)
