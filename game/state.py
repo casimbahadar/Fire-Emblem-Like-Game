@@ -538,7 +538,7 @@ class GameState:
 
     def check_victory(self):
         ch = self.current_chapter
-        if self.victory:
+        if self.victory or ch is None:
             return
         if ch.objective == OBJ_ROUT_ENEMY:
             if all(not u.alive for u in self.enemy_units):
