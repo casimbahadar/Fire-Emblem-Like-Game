@@ -368,7 +368,18 @@ class GameState:
                 u.alive and not u.has_acted):
             self.selected_unit = u
             self.cursor_mode   = CURSOR_UNIT_SEL
-            self._compute_ranges(u)
+            # If already moved, skip move phase — only allow actions
+            if u.has_moved:
+                self.move_range      = set()
+                self.move_range_land = {(u.x, u.y)}
+                if u.equipped:
+                    mn, mx = u.attack_range()
+                    self.attack_range = self.game_map.get_attack_range_cells(
+                        self.move_range_land, mn, mx)
+                else:
+                    self.attack_range = set()
+            else:
+                self._compute_ranges(u)
             return True
         return False
 

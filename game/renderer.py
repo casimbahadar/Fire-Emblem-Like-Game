@@ -873,7 +873,7 @@ class Renderer:
             pygame.draw.polygon(self.screen,WHITE,pts,1)
 
         # Instruction box (bottom of map area)
-        bh = 170
+        bh = 195
         box = pygame.Rect(8, SCREEN_HEIGHT-bh-8, self.map_rect.width-16, bh)
         pygame.draw.rect(self.screen,(12,14,34,230),box)
         pygame.draw.rect(self.screen,GOLD,box,2)
@@ -889,7 +889,7 @@ class Renderer:
         self.screen.blit(self.font_md.render(stage.title,True,GOLD),
                          (box.x+10,box.y+16)); y=box.y+42
         # Body lines
-        for line in stage.body[:5]:
+        for line in stage.body[:7]:
             self.screen.blit(self.font_sm.render(line,True,CREAM),(box.x+12,y)); y+=18
 
         # Action hint + skip

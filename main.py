@@ -425,6 +425,7 @@ async def main():
                 tgts = gs.get_attackable_targets(unit)
                 if tgts:
                     _open_combat_preview(unit, tgts[0])
+                    tutorial_event("attack_pressed")
             return
 
         # ── Heal ──────────────────────────────────────────────────────────────
@@ -443,6 +444,7 @@ async def main():
             unit = gs.selected_unit
             if unit and unit.faction==FACTION_PLAYER:
                 unit.done(); reset_interaction()
+                tutorial_event("wait_used")
             return
 
         # ── Talk/Recruit ──────────────────────────────────────────────────────
