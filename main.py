@@ -141,6 +141,47 @@ async def main():
         if gs.tutorial.check_completion(gs, event_type):
             gs.tutorial.advance()
 
+    # Actions allowed per tutorial stage (gating).
+    # "direction" = cursor movement, "confirm"/"cancel" = Z/X keys,
+    # other strings match action names from the input handler.
+    _TUTORIAL_ALLOWED = {
+        "welcome":          {"confirm", "cancel"},
+        "cursor":           {"direction"},
+        "select_unit":      {"direction", "confirm"},
+        "move_unit":        {"direction", "confirm", "cancel"},
+        "attack_intro":     {"attack", "cancel"},
+        "attack_forecast":  {"confirm", "cancel", "left", "right"},
+        "first_blood":      {"confirm", "cancel"},
+        "wait_explain":     {"direction", "confirm", "cancel", "wait"},
+        "end_turn":         {"end_turn"},
+        "enemy_phase":      {"confirm", "cancel"},
+        "weapon_triangle":  {"confirm", "cancel"},
+        "terrain":          {"confirm", "cancel"},
+        "healing":          {"direction", "confirm", "cancel", "heal"},
+        "recruit":          {"direction", "confirm", "cancel", "talk"},
+        "stat_sheet":       {"direction", "confirm", "cancel", "info"},
+        "seize":            {"direction", "confirm", "cancel", "seize"},
+        "complete":         {"confirm", "cancel"},
+    }
+
+    def _tutorial_allows(action):
+        '''Return True if the current tutorial stage allows this action.'''
+        if not gs.tutorial.active:
+            return True
+        stage = gs.tutorial.current_stage
+        if stage is None:
+            return True
+        allowed = _TUTORIAL_ALLOWED.get(stage.stage_id)
+        if allowed is None:
+            return True
+        # "skip_tutorial" is always allowed
+        if action == "skip_tutorial":
+            return True
+        # Directional movement uses "direction" as a blanket allow
+        if action in ("up", "down", "left", "right"):
+            return "direction" in allowed or action in allowed
+        return action in allowed
+
     def begin_chapter(idx):
         nonlocal in_tutorial
         in_tutorial = False
@@ -314,6 +355,17 @@ async def main():
                 tutorial_event("any_key")
             return
 
+        # ── Tutorial action gating ───────────────────────────────────────────
+        if not _tutorial_allows(action):
+            return
+
+        # Tutorial "any_key" stages: advance on confirm/cancel
+        if (gs.tutorial.active and gs.tutorial.current_stage
+                and gs.tutorial.current_stage.completion == "any_key"
+                and action in ("confirm", "cancel")):
+            tutorial_event("any_key")
+            return
+
         # ── Stat sheet ────────────────────────────────────────────────────────
         if action == "info":
             target_unit = gs.unit_at(gs.cursor_x, gs.cursor_y)
@@ -397,6 +449,12 @@ async def main():
         if action == "confirm":
             cx,cy = gs.cursor_x, gs.cursor_y
             if gs.cursor_mode == CURSOR_FREE:
+                # Tutorial: restrict selection to highlighted units
+                if (gs.tutorial.active and gs.tutorial.current_stage
+                        and gs.tutorial.current_stage.highlight_units):
+                    target = gs.unit_at(cx, cy)
+                    if not target or target.unit_id not in gs.tutorial.current_stage.highlight_units:
+                        return
                 if gs.select_unit(cx,cy):
                     tutorial_event("unit_selected")
             elif gs.cursor_mode == CURSOR_UNIT_SEL:
