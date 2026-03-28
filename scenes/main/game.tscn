@@ -1,0 +1,93 @@
+[gd_scene load_steps=2 format=3 uid="uid://main_game"]
+
+[ext_resource type="Script" path="res://scripts/core/game_manager.gd" id="1_game"]
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_game")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(1, 1)
+
+[node name="BattleMap" type="Node2D" parent="."]
+
+[node name="Grid" type="Node2D" parent="BattleMap"]
+
+[node name="TerrainLayer" type="Node2D" parent="BattleMap"]
+
+[node name="UnitLayer" type="Node2D" parent="BattleMap"]
+
+[node name="OverlayLayer" type="Node2D" parent="BattleMap"]
+
+[node name="Cursor" type="Sprite2D" parent="BattleMap"]
+visible = false
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="UIPanel" type="Panel" parent="UI"]
+offset_left = 734.0
+offset_right = 1024.0
+offset_bottom = 768.0
+
+[node name="MessageBox" type="PanelContainer" parent="UI"]
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -250.0
+offset_top = -100.0
+offset_right = 250.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="MessageLabel" type="Label" parent="UI/MessageBox"]
+layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TitleScreen" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="TitleRoot" type="ColorRect" parent="TitleScreen"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.08, 0.04, 0.12, 1)
+
+[node name="TitleLabel" type="Label" parent="TitleScreen/TitleRoot"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 120.0
+offset_right = 200.0
+offset_bottom = 180.0
+horizontal_alignment = 1
+text = "SENGOKU TACTICS"
+
+[node name="SubtitleLabel" type="Label" parent="TitleScreen/TitleRoot"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 200.0
+offset_right = 200.0
+offset_bottom = 240.0
+horizontal_alignment = 1
+text = "Age of the Warring States"
+
+[node name="StartLabel" type="Label" parent="TitleScreen/TitleRoot"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 340.0
+offset_right = 150.0
+offset_bottom = 370.0
+horizontal_alignment = 1
+text = "Press ENTER or Tap to Start"
+
+[node name="CombatAnimLayer" type="CanvasLayer" parent="."]
+layer = 5
+visible = false
