@@ -73,6 +73,23 @@ var _combat_result: Combat.CombatResult = null
 var _combat_atk_node: Node2D = null
 var _combat_def_node: Node2D = null
 
+# ── Movement animation state ────────────────────────────────────────────────
+var _move_animating: bool = false
+
+# ── Phase banner state ──────────────────────────────────────────────────────
+var _phase_banner: Label = null
+var _phase_banner_showing: bool = false
+
+# ── Danger zone ─────────────────────────────────────────────────────────────
+var _danger_zone_visible: bool = false
+
+# ── Stat sheet ──────────────────────────────────────────────────────────────
+var _stat_sheet_visible: bool = false
+var _stat_sheet_layer: CanvasLayer = null
+
+# ── Move undo tracking ──────────────────────────────────────────────────────
+var _pre_move_pos: Vector2i = Vector2i.ZERO
+
 
 func _ready() -> void:
 	grid = Grid.new()
@@ -468,12 +485,20 @@ func _update_cursor() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Block input during animations
-	if _intro_showing or _combat_animating:
+	if _intro_showing or _combat_animating or _move_animating or _phase_banner_showing:
 		if event is InputEventKey and event.pressed:
 			if _intro_showing:
 				_end_chapter_intro()
 			elif _combat_animating:
 				_finish_combat_anim()
+		return
+
+	# Stat sheet takes priority
+	if _stat_sheet_visible:
+		if (event is InputEventKey and event.pressed) or \
+		   (event is InputEventMouseButton and event.pressed) or \
+		   (event is InputEventScreenTouch and not event.pressed):
+			_close_stat_sheet()
 		return
 
 	# Keyboard input
@@ -555,9 +580,16 @@ func _handle_player_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("confirm"):
 		_handle_confirm()
 	elif event.is_action_pressed("cancel"):
-		_reset_interaction()
+		if _danger_zone_visible:
+			_hide_danger_zone()
+		else:
+			_reset_interaction()
 	elif event.is_action_pressed("end_turn"):
 		_end_player_turn()
+	elif event.is_action_pressed("info"):
+		_toggle_stat_sheet()
+	elif event.is_action_pressed("attack"):
+		_toggle_danger_zone()
 
 
 func _move_cursor(delta: Vector2i) -> void:
@@ -632,16 +664,51 @@ func _move_selected_unit(pos: Vector2i) -> void:
 	if not selected_unit:
 		return
 	var data: UnitData = selected_unit.get_meta("unit_data")
+	_pre_move_pos = data.grid_pos
 	var old_pos := data.grid_pos
 	data.grid_pos = pos
 	data.has_moved = true
-	selected_unit.position = grid.grid_to_pixel(pos)
 	_clear_overlay()
+
+	# Animate movement along path
+	_move_animating = true
+	var path := _build_move_path(old_pos, pos)
+	await _animate_unit_along_path(selected_unit, path)
+	_move_animating = false
+
 	_update_unit_hp_bar(selected_unit)
 	EventBus.unit_moved.emit(selected_unit, old_pos, pos)
 
 	# Show action menu
 	_show_action_menu(data)
+
+
+func _build_move_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	# Simple straight-line path stepping one tile at a time
+	var path: Array[Vector2i] = [from]
+	var current := from
+	while current != to:
+		var dx := signi(to.x - current.x)
+		var dy := signi(to.y - current.y)
+		# Prefer horizontal then vertical
+		if dx != 0:
+			current = Vector2i(current.x + dx, current.y)
+		elif dy != 0:
+			current = Vector2i(current.x, current.y + dy)
+		path.append(current)
+	return path
+
+
+func _animate_unit_along_path(unit_node: Node2D, path: Array[Vector2i]) -> void:
+	if path.size() <= 1:
+		unit_node.position = grid.grid_to_pixel(path[-1] if not path.is_empty() else Vector2i.ZERO)
+		return
+	var speed := 0.08  # seconds per tile
+	for i in range(1, path.size()):
+		var target_pixel := grid.grid_to_pixel(path[i])
+		var tween := create_tween()
+		tween.tween_property(unit_node, "position", target_pixel, speed)
+		await tween.finished
 
 
 # ── Action menu ──────────────────────────────────────────────────────────────
@@ -664,9 +731,18 @@ func _show_action_menu(data: UnitData) -> void:
 		if not heal_targets.is_empty():
 			actions.append("Heal")
 
+	# Talk / Recruit check
+	var talk_targets := _get_talk_targets(data)
+	if not talk_targets.is_empty():
+		actions.append("Talk")
+
 	# Seize check
 	if data.grid_pos in grid.seize_points:
 		actions.append("Seize")
+
+	# Weapon switch (if unit has multiple weapons)
+	if data.weapons.size() > 1:
+		actions.append("Weapon")
 
 	actions.append("Wait")
 
@@ -682,11 +758,12 @@ func _show_action_menu(data: UnitData) -> void:
 func _handle_action_menu_input(event: InputEvent) -> void:
 	if event.is_action_pressed("cancel"):
 		_close_action_menu()
-		# Undo move
+		# Undo move — restore to pre-move position
 		if selected_unit:
 			var data: UnitData = selected_unit.get_meta("unit_data")
+			data.grid_pos = _pre_move_pos
 			data.has_moved = false
-			# We don't track old position, so just reset interaction
+			selected_unit.position = grid.grid_to_pixel(_pre_move_pos)
 		_reset_interaction()
 
 
@@ -702,8 +779,12 @@ func _on_action_selected(action_name: String) -> void:
 			_handle_attack_action()
 		"Heal":
 			_handle_heal_action()
+		"Talk":
+			_handle_talk_action()
 		"Seize":
 			_handle_seize_action()
+		"Weapon":
+			_handle_weapon_switch()
 		"Wait":
 			_handle_wait_action()
 
@@ -950,12 +1031,17 @@ func _end_player_turn() -> void:
 			data.done()
 	_reset_interaction()
 
+	# Check side objectives at end of player turn
+	_check_side_objectives()
+	_update_message_box()
+
 	GameData.change_state(Constants.GameState.ENEMY_TURN)
 	turn_manager.end_player_turn()
 	_update_top_bar()
 
-	# Run enemy AI with a short delay for visual feedback
-	await get_tree().create_timer(0.3).timeout
+	# Show enemy phase banner then run AI
+	_show_phase_banner("Enemy Phase", Color(1.0, 0.4, 0.4))
+	await get_tree().create_timer(1.5).timeout
 	_run_enemy_turn()
 
 
@@ -972,19 +1058,24 @@ func _run_enemy_turn() -> void:
 	ai.ally_units = _get_alive_unit_data(ally_units)
 	var actions := ai.run_turn()
 
-	# Apply AI actions visually
+	# Apply AI actions one at a time with visual pacing
 	for action in actions:
 		var unit_data = action.get("unit", null)
 		if not unit_data:
 			continue
 
-		# Find the node for this unit
 		var unit_node: Node2D = _find_node_for_data(unit_data, enemy_units)
 		if not unit_node:
 			continue
 
-		# Move visually
-		unit_node.position = grid.grid_to_pixel(unit_data.grid_pos)
+		# Animate movement
+		var move_to = action.get("move_to", null)
+		if move_to and move_to is Vector2i:
+			var old_pos := unit_node.position
+			var path := _build_move_path(
+				grid.pixel_to_grid(old_pos), move_to)
+			await _animate_unit_along_path(unit_node, path)
+
 		_update_unit_hp_bar(unit_node)
 
 		if action.get("type", "") == "attack":
@@ -994,7 +1085,7 @@ func _run_enemy_turn() -> void:
 				var terrain_def := grid.get_terrain(target.grid_pos)
 				var result := Combat.resolve(unit_data, target, terrain_att, terrain_def)
 
-				# Update target visibility
+				# Show damage on targets
 				if not target.alive:
 					var target_node := _find_node_for_data(target, player_units + ally_units)
 					if target_node:
@@ -1003,7 +1094,30 @@ func _run_enemy_turn() -> void:
 				else:
 					var target_node := _find_node_for_data(target, player_units + ally_units)
 					if target_node:
+						# Show damage number
+						var total_dmg := 0
+						for rnd in result.rounds:
+							if rnd.hit and not rnd.is_counter:
+								total_dmg += rnd.damage
+						if total_dmg > 0:
+							_spawn_damage_popup(target.grid_pos, str(total_dmg), Color(1, 0.6, 0.6))
 						_update_unit_hp_bar(target_node)
+
+				# Show counter damage on attacker
+				if not unit_data.alive:
+					unit_node.visible = false
+					_spawn_damage_popup(unit_data.grid_pos, "DEFEATED", Color(1, 0.3, 0.3))
+				else:
+					var counter_dmg := 0
+					for rnd in result.rounds:
+						if rnd.hit and rnd.is_counter:
+							counter_dmg += rnd.damage
+					if counter_dmg > 0:
+						_spawn_damage_popup(unit_data.grid_pos, str(counter_dmg), Color(1, 0.6, 0.6))
+					_update_unit_hp_bar(unit_node)
+
+		# Brief pause between each enemy action
+		await get_tree().create_timer(0.4).timeout
 
 	_check_defeat()
 
@@ -1017,6 +1131,9 @@ func _run_enemy_turn() -> void:
 	GameData.change_state(Constants.GameState.PLAYER_TURN)
 	turn_manager.start_player_turn()
 	_update_top_bar()
+
+	# Show player phase banner
+	_show_phase_banner("Player Phase", Color(0.4, 0.6, 1.0))
 
 
 # ── Victory / Defeat / Chapter advance ───────────────────────────────────────
@@ -1413,6 +1530,380 @@ func _end_chapter_intro() -> void:
 	var tween := create_tween()
 	tween.tween_property(chapter_intro_layer, "modulate:a", 0.0, 0.3)
 	tween.tween_callback(func(): chapter_intro_layer.visible = false)
+
+
+# ── Phase banner ─────────────────────────────────────────────────────────────
+
+func _show_phase_banner(text: String, color: Color) -> void:
+	_phase_banner_showing = true
+	if _phase_banner:
+		_phase_banner.queue_free()
+
+	var vp_size := get_viewport().get_visible_rect().size
+
+	_phase_banner = Label.new()
+	_phase_banner.text = text
+	_phase_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_phase_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_phase_banner.size = Vector2(vp_size.x, 60)
+	_phase_banner.position = Vector2(-vp_size.x, vp_size.y * 0.4)
+	_phase_banner.add_theme_font_size_override("font_size", 30)
+	_phase_banner.add_theme_color_override("font_color", color)
+	_phase_banner.z_index = 100
+
+	# Dark backing strip
+	var bg := ColorRect.new()
+	bg.size = Vector2(vp_size.x, 60)
+	bg.color = Color(0, 0, 0, 0.7)
+	_phase_banner.add_child(bg)
+	bg.z_index = -1
+
+	# Gold borders on top/bottom of banner
+	var line_t := ColorRect.new()
+	line_t.size = Vector2(vp_size.x, 2)
+	line_t.color = Color(0.85, 0.65, 0.13, 0.8)
+	_phase_banner.add_child(line_t)
+	var line_b := ColorRect.new()
+	line_b.size = Vector2(vp_size.x, 2)
+	line_b.position = Vector2(0, 58)
+	line_b.color = Color(0.85, 0.65, 0.13, 0.8)
+	_phase_banner.add_child(line_b)
+
+	add_child(_phase_banner)
+
+	# Slide in from left, pause, slide out right
+	var tween := create_tween()
+	tween.tween_property(_phase_banner, "position:x", 0.0, 0.3).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(0.8)
+	tween.tween_property(_phase_banner, "position:x", vp_size.x, 0.3).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func():
+		_phase_banner_showing = false
+		if _phase_banner:
+			_phase_banner.queue_free()
+			_phase_banner = null
+	)
+
+
+# ── Danger zone overlay ─────────────────────────────────────────────────────
+
+func _toggle_danger_zone() -> void:
+	if _danger_zone_visible:
+		_hide_danger_zone()
+	else:
+		_show_danger_zone()
+
+
+func _show_danger_zone() -> void:
+	if GameData.cursor_mode != Constants.CursorMode.FREE:
+		return
+	_danger_zone_visible = true
+	_clear_overlay()
+	var ts := float(Constants.TILE_SIZE)
+	var danger_tiles := {}
+
+	for u in enemy_units:
+		var data: UnitData = u.get_meta("unit_data")
+		if not data.alive:
+			continue
+		var e_move := grid.get_movement_range(
+			data.grid_pos, data.mov, data.unit_class,
+			data.is_flying, data.is_mounted, data.water_walk)
+		var range_vec := data.attack_range()
+		var e_attack := grid.get_attack_range(e_move, range_vec.x, range_vec.y)
+		for tile in e_move + e_attack:
+			danger_tiles[tile] = true
+
+	for tile in danger_tiles:
+		var rect := ColorRect.new()
+		rect.size = Vector2(ts, ts)
+		rect.position = Vector2(tile.x * ts, tile.y * ts)
+		rect.color = Color(1.0, 0.1, 0.1, 0.2)
+		overlay_layer.add_child(rect)
+
+
+func _hide_danger_zone() -> void:
+	_danger_zone_visible = false
+	_clear_overlay()
+
+
+# ── Weapon switching ─────────────────────────────────────────────────────────
+
+func _handle_weapon_switch() -> void:
+	if not selected_unit:
+		return
+	var data: UnitData = selected_unit.get_meta("unit_data")
+	if data.weapons.size() <= 1:
+		return
+
+	# Cycle to next weapon
+	data.equipped_weapon_index = (data.equipped_weapon_index + 1) % data.weapons.size()
+	var wep_name: String = data.equipped.get("name", "Unarmed")
+	GameData.push_message("%s equipped %s" % [data.name, wep_name])
+	_update_info_panel_for_unit(data)
+	_update_message_box()
+
+	# Re-show the action menu (don't consume the action)
+	_show_action_menu(data)
+
+
+# ── Recruitment / Talk ───────────────────────────────────────────────────────
+
+func _get_talk_targets(data: UnitData) -> Array:
+	var targets: Array = []
+	for dir in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		var adj := data.grid_pos + dir
+		var unit_node := _unit_at(adj)
+		if unit_node:
+			var ud: UnitData = unit_node.get_meta("unit_data")
+			if ud.alive and ud.can_recruit and data.unit_id in ud.recruit_by:
+				targets.append(unit_node)
+	return targets
+
+
+func _handle_talk_action() -> void:
+	if not selected_unit:
+		return
+	var data: UnitData = selected_unit.get_meta("unit_data")
+	var talk_targets := _get_talk_targets(data)
+	if talk_targets.is_empty():
+		return
+
+	var target_node: Node2D = talk_targets[0]
+	var target_data: UnitData = target_node.get_meta("unit_data")
+
+	# Recruit the unit
+	target_data.faction = Constants.Faction.PLAYER
+	target_data.can_recruit = false
+	target_data.reset_turn()
+
+	# Move from enemy/ally list to player list
+	enemy_units.erase(target_node)
+	ally_units.erase(target_node)
+	player_units.append(target_node)
+
+	# Update visuals
+	var badge: ColorRect = target_node.get_node_or_null("Badge")
+	if badge:
+		badge.color = _get_faction_badge_color(Constants.Faction.PLAYER)
+	var border: ColorRect = target_node.get_node_or_null("Border")
+	if border:
+		border.color = _get_faction_border_color(Constants.Faction.PLAYER)
+	var hp_fill: ColorRect = target_node.get_node_or_null("HPBarFill")
+	if hp_fill:
+		hp_fill.color = _get_hp_color(Constants.Faction.PLAYER)
+
+	# Add to roster for persistence
+	GameData.roster[target_data.unit_id] = target_data
+
+	GameData.push_message("%s has joined your army!" % target_data.name)
+	if not target_data.portrait_quote.is_empty():
+		GameData.push_message('"%s"' % target_data.portrait_quote)
+
+	data.done()
+	_reset_interaction()
+	_update_message_box()
+	EventBus.unit_recruited.emit(selected_unit, target_node)
+
+
+# ── Side objectives ──────────────────────────────────────────────────────────
+
+func _check_side_objectives() -> void:
+	var ch: Dictionary = Chapters.get_chapter(GameData.chapter_index)
+	var side_objs: Array = ch.get("side_objectives", [])
+	for obj in side_objs:
+		if obj.get("completed", false):
+			continue
+		var obj_type: String = obj.get("type", "")
+		match obj_type:
+			"defeat":
+				var target_id: String = obj.get("target", "")
+				var found := false
+				for u in enemy_units + ally_units:
+					var ud: UnitData = u.get_meta("unit_data")
+					if ud.unit_id == target_id and ud.alive:
+						found = true
+						break
+				if not found:
+					obj["completed"] = true
+					var reward: int = obj.get("reward_gold", 0)
+					GameData.gold += reward
+					var desc: String = obj.get("description", "Side objective complete!")
+					GameData.push_message("%s (+%d gold)" % [desc, reward])
+			"visit":
+				var target_pos = obj.get("target", [0, 0])
+				var tpos := Vector2i(target_pos[0], target_pos[1]) if target_pos is Array else target_pos
+				for u in player_units:
+					var ud: UnitData = u.get_meta("unit_data")
+					if ud.alive and ud.grid_pos == tpos:
+						obj["completed"] = true
+						var reward: int = obj.get("reward_gold", 0)
+						GameData.gold += reward
+						var desc: String = obj.get("description", "Side objective complete!")
+						GameData.push_message("%s (+%d gold)" % [desc, reward])
+						break
+			"survive":
+				var turns: int = obj.get("turns", 0)
+				if turn_manager.turn_number >= turns:
+					obj["completed"] = true
+					var reward: int = obj.get("reward_gold", 0)
+					GameData.gold += reward
+					var desc: String = obj.get("description", "Side objective complete!")
+					GameData.push_message("%s (+%d gold)" % [desc, reward])
+
+
+# ── Stat sheet ───────────────────────────────────────────────────────────────
+
+func _toggle_stat_sheet() -> void:
+	if _stat_sheet_visible:
+		_close_stat_sheet()
+	else:
+		_open_stat_sheet()
+
+
+func _open_stat_sheet() -> void:
+	# Show detailed info for unit under cursor, or selected unit
+	var unit_node := _unit_at(GameData.cursor_pos)
+	if not unit_node:
+		return
+	var data: UnitData = unit_node.get_meta("unit_data")
+
+	_stat_sheet_visible = true
+	if _stat_sheet_layer:
+		_stat_sheet_layer.queue_free()
+
+	_stat_sheet_layer = CanvasLayer.new()
+	_stat_sheet_layer.layer = 15
+	add_child(_stat_sheet_layer)
+
+	var vp_size := get_viewport().get_visible_rect().size
+
+	# Dark overlay
+	var overlay := ColorRect.new()
+	overlay.size = vp_size
+	overlay.color = Color(0, 0, 0, 0.75)
+	_stat_sheet_layer.add_child(overlay)
+
+	# Main panel
+	var panel := PanelContainer.new()
+	panel.size = Vector2(min(500, vp_size.x - 40), min(500, vp_size.y - 80))
+	panel.position = Vector2((vp_size.x - panel.size.x) / 2, (vp_size.y - panel.size.y) / 2)
+	_stat_sheet_layer.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_bottom", 16)
+	panel.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	margin.add_child(vbox)
+
+	# Name + class header
+	var header := Label.new()
+	header.text = "%s  —  %s Lv.%d" % [data.name, data.unit_class, data.level]
+	header.add_theme_font_size_override("font_size", 22)
+	header.add_theme_color_override("font_color", Color(0.85, 0.65, 0.13))
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(header)
+
+	# Symbol
+	var sym := Label.new()
+	sym.text = Constants.CLASS_SYMBOLS.get(data.unit_class, "★")
+	sym.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sym.add_theme_font_size_override("font_size", 36)
+	vbox.add_child(sym)
+
+	# HP bar
+	var hp_line := Label.new()
+	hp_line.text = "HP: %d / %d" % [data.hp, data.max_hp]
+	hp_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp_line.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(hp_line)
+
+	# Stats grid (2 columns)
+	var sgrid := GridContainer.new()
+	sgrid.columns = 4
+	sgrid.add_theme_constant_override("h_separation", 20)
+	sgrid.add_theme_constant_override("v_separation", 4)
+	vbox.add_child(sgrid)
+
+	var stats := [
+		["STR", data.str_], ["MAG", data.mag],
+		["SKL", data.skl], ["SPD", data.spd],
+		["DEF", data.def_], ["RES", data.res],
+		["LCK", data.lck], ["MOV", data.mov],
+	]
+	for s in stats:
+		var lbl := Label.new()
+		lbl.text = "%s" % s[0]
+		lbl.add_theme_font_size_override("font_size", 14)
+		lbl.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
+		sgrid.add_child(lbl)
+		var val := Label.new()
+		val.text = "%d" % s[1]
+		val.add_theme_font_size_override("font_size", 14)
+		sgrid.add_child(val)
+
+	# Separator
+	var sep := HSeparator.new()
+	vbox.add_child(sep)
+
+	# Weapons list
+	var wep_header := Label.new()
+	wep_header.text = "Weapons"
+	wep_header.add_theme_font_size_override("font_size", 16)
+	wep_header.add_theme_color_override("font_color", Color(0.85, 0.65, 0.13))
+	vbox.add_child(wep_header)
+
+	for i in range(data.weapons.size()):
+		var w: Dictionary = data.weapons[i]
+		var equipped_mark := " [E]" if i == data.equipped_weapon_index else ""
+		var wlbl := Label.new()
+		wlbl.text = "%s%s  Mt:%d  Hit:%d  Rng:%d-%d" % [
+			w.get("name", "???"), equipped_mark,
+			w.get("might", 0), w.get("hit", 0),
+			w.get("min_range", 1), w.get("max_range", 1)]
+		wlbl.add_theme_font_size_override("font_size", 13)
+		vbox.add_child(wlbl)
+
+	if data.weapons.is_empty():
+		var no_wep := Label.new()
+		no_wep.text = "Unarmed"
+		no_wep.add_theme_font_size_override("font_size", 13)
+		no_wep.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		vbox.add_child(no_wep)
+
+	# Bio
+	if not data.bio.is_empty():
+		var sep2 := HSeparator.new()
+		vbox.add_child(sep2)
+		var bio_lbl := Label.new()
+		bio_lbl.text = data.bio
+		bio_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		bio_lbl.add_theme_font_size_override("font_size", 12)
+		bio_lbl.add_theme_color_override("font_color", Color(0.7, 0.67, 0.6))
+		vbox.add_child(bio_lbl)
+
+	# Close hint
+	var hint := Label.new()
+	hint.text = "Press any key to close"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", Color(0.4, 0.38, 0.35))
+	vbox.add_child(hint)
+
+	EventBus.stat_sheet_opened.emit(unit_node)
+
+
+func _close_stat_sheet() -> void:
+	_stat_sheet_visible = false
+	if _stat_sheet_layer:
+		_stat_sheet_layer.queue_free()
+		_stat_sheet_layer = null
+	EventBus.stat_sheet_closed.emit()
 
 
 # ── State change handler ─────────────────────────────────────────────────────
