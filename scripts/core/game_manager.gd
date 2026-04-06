@@ -90,6 +90,12 @@ var _stat_sheet_layer: CanvasLayer = null
 # ── Move undo tracking ──────────────────────────────────────────────────────
 var _pre_move_pos: Vector2i = Vector2i.ZERO
 
+# ── Deploy / Shop screens ───────────────────────────────────────────────────
+var _deploy_screen: Control = null
+var _shop_screen: Control = null
+var _deploy_layer: CanvasLayer = null
+var _shop_layer: CanvasLayer = null
+
 
 func _ready() -> void:
 	grid = Grid.new()
@@ -180,12 +186,69 @@ func _start_new_game() -> void:
 	_load_chapter(0)
 
 
+func _continue_game() -> void:
+	if not SaveSystem.has_save(0):
+		_start_new_game()
+		return
+
+	title_screen_layer.visible = false
+	if title_screen_script and title_screen_script.has_method("hide_screen"):
+		title_screen_script.hide_screen()
+
+	battle_map.visible = true
+	top_bar.visible = true
+	info_panel.visible = true
+
+	if SaveSystem.load_game(0):
+		_load_chapter(GameData.chapter_index)
+	else:
+		_start_new_game()
+
+
 # ── Chapter loading ──────────────────────────────────────────────────────────
 
 func _load_chapter(index: int) -> void:
 	var ch: Dictionary = Chapters.get_chapter(index)
 	GameData.chapter_index = index
 
+	# Show deploy screen if there are enough units and deploy_limit is set
+	var deploy_limit: int = ch.get("deploy_limit", 99)
+	var available_count := 0
+	for uid in GameData.roster:
+		var u: UnitData = GameData.roster[uid]
+		if u.faction == Constants.Faction.PLAYER and u.alive and uid not in GameData.casualty_list:
+			available_count += 1
+
+	if available_count > deploy_limit and deploy_limit < 99:
+		_show_deploy_screen(ch)
+	else:
+		_start_chapter(ch)
+
+
+func _show_deploy_screen(ch: Dictionary) -> void:
+	_deploy_layer = CanvasLayer.new()
+	_deploy_layer.layer = 12
+	add_child(_deploy_layer)
+
+	var deploy_script = load("res://scripts/ui/deploy_screen.gd")
+	_deploy_screen = Control.new()
+	_deploy_screen.set_script(deploy_script)
+	_deploy_layer.add_child(_deploy_screen)
+	_deploy_screen.setup(ch)
+	_deploy_screen.deploy_confirmed.connect(_on_deploy_confirmed.bind(ch))
+
+
+func _on_deploy_confirmed(selected_ids: Array, ch: Dictionary) -> void:
+	# Store which units the player chose to deploy
+	GameData.set_meta("deployed_units", selected_ids)
+	if _deploy_layer:
+		_deploy_layer.queue_free()
+		_deploy_layer = null
+		_deploy_screen = null
+	_start_chapter(ch)
+
+
+func _start_chapter(ch: Dictionary) -> void:
 	# Setup grid
 	grid.setup(ch.get("map_width", 12), ch.get("map_height", 10), ch.get("tiles", []))
 	grid.seize_points.clear()
@@ -202,9 +265,18 @@ func _load_chapter(index: int) -> void:
 	enemy_units.clear()
 	ally_units.clear()
 
-	# Spawn units — format is ["uid", x, y] arrays
+	# Get deployed unit IDs (if deploy screen was used)
+	var deployed_ids: Array = []
+	if GameData.has_meta("deployed_units"):
+		deployed_ids = GameData.get_meta("deployed_units")
+
+	# Spawn player units — only deployed ones if deploy screen was used
 	for def in ch.get("player_units", []):
-		_spawn_unit(def, Constants.Faction.PLAYER)
+		var uid: String = str(def[0]) if def is Array else def.get("id", "")
+		if deployed_ids.is_empty() or uid in deployed_ids:
+			_spawn_unit(def, Constants.Faction.PLAYER)
+
+	# Spawn enemy and ally units
 	for def in ch.get("enemy_units", []):
 		_spawn_unit(def, Constants.Faction.ENEMY)
 	for def in ch.get("ally_units", []):
@@ -234,7 +306,7 @@ func _load_chapter(index: int) -> void:
 
 	# Show chapter intro
 	_show_chapter_intro(ch)
-	EventBus.chapter_started.emit(index)
+	EventBus.chapter_started.emit(GameData.chapter_index)
 
 
 # ── Unit spawning ────────────────────────────────────────────────────────────
@@ -1164,13 +1236,47 @@ func _handle_victory_input(event: InputEvent) -> void:
 
 
 func _advance_chapter() -> void:
+	# Award gold for completing chapter
+	GameData.gold += Constants.GOLD_PER_CHAPTER
+
+	# Save progress after each chapter
+	SaveSystem.save_game(0)
+
+	# Sync surviving unit stats back to roster
+	for u in player_units:
+		var data: UnitData = u.get_meta("unit_data")
+		if data.alive:
+			GameData.roster[data.unit_id] = data
+
 	if GameData.chapter_index + 1 < Chapters.chapter_count():
-		_load_chapter(GameData.chapter_index + 1)
+		# Show shop between chapters
+		_show_shop_screen()
 	else:
 		GameData.push_message("Congratulations! You have completed Sengoku Tactics!")
 		_update_message_box()
 		await get_tree().create_timer(3.0).timeout
 		_enter_title()
+
+
+func _show_shop_screen() -> void:
+	_shop_layer = CanvasLayer.new()
+	_shop_layer.layer = 12
+	add_child(_shop_layer)
+
+	var shop_script = load("res://scripts/ui/shop_screen.gd")
+	_shop_screen = Control.new()
+	_shop_screen.set_script(shop_script)
+	_shop_layer.add_child(_shop_screen)
+	_shop_screen.setup()
+	_shop_screen.shop_closed.connect(_on_shop_closed)
+
+
+func _on_shop_closed() -> void:
+	if _shop_layer:
+		_shop_layer.queue_free()
+		_shop_layer = null
+		_shop_screen = null
+	_load_chapter(GameData.chapter_index + 1)
 
 
 func _handle_gameover_input(event: InputEvent) -> void:
