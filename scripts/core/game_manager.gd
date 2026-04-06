@@ -1222,7 +1222,7 @@ func _check_victory() -> void:
 func _check_defeat() -> void:
 	for u in player_units:
 		var data: UnitData = u.get_meta("unit_data")
-		if data.unit_class == Constants.CLASS_LORD and not data.alive:
+		if (data.unit_class == Constants.CLASS_LORD or data.unit_class == Constants.CLASS_DAIMYO) and not data.alive:
 			GameData.push_message("%s has fallen! Defeat..." % data.name)
 			GameData.change_state(Constants.GameState.GAME_OVER)
 			EventBus.chapter_defeat.emit()

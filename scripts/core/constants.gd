@@ -106,34 +106,47 @@ static func weapon_triangle(atk_type: int, def_type: int) -> int:
 		return -1
 	return 0
 
-# ── Unit classes ─────────────────────────────────────────────────────────────
+# ── Unit classes (base) ──────────────────────────────────────────────────────
 const CLASS_LORD       := "Lord"
+const CLASS_DAIMYO     := "Daimyo"
 const CLASS_SAMURAI    := "Samurai"
+const CLASS_RONIN      := "Ronin"
 const CLASS_ASHIGARU   := "Ashigaru"
+const CLASS_SPEARMAN   := "Spearman"
 const CLASS_ARCHER     := "Archer"
 const CLASS_CAVALRY    := "Cavalry"
 const CLASS_NINJA      := "Ninja"
+const CLASS_KUNOICHI   := "Kunoichi"
 const CLASS_MONK       := "Monk"
+const CLASS_SOHEI      := "Sohei"
 const CLASS_ONMYOJI    := "Onmyoji"
 const CLASS_NOBLE_LADY := "Noble Lady"
 const CLASS_GUNNER     := "Gunner"
 const CLASS_GENERAL    := "General"
+const CLASS_BERSERKER  := "Berserker"
+const CLASS_TACTICIAN  := "Tactician"
+const CLASS_MOUNTED_ARCHER := "Mounted Archer"
 const CLASS_PEGASUS    := "Pegasus"
 const CLASS_WYVERN     := "Wyvern"
 const CLASS_PIRATE     := "Pirate"
+const CLASS_KUSARIGAMA := "Kusarigama"
+const CLASS_HATAMOTO   := "Hatamoto"
 
 # ── Unit class symbols ───────────────────────────────────────────────────────
 const CLASS_SYMBOLS := {
-	CLASS_LORD: "♦", CLASS_SAMURAI: "★", CLASS_ASHIGARU: "▲",
-	CLASS_ARCHER: "➶", CLASS_CAVALRY: "♞", CLASS_NINJA: "✦",
-	CLASS_MONK: "✙", CLASS_ONMYOJI: "☯", CLASS_NOBLE_LADY: "♥",
-	CLASS_GUNNER: "⊕", CLASS_GENERAL: "◆", CLASS_PEGASUS: "♧",
-	CLASS_WYVERN: "♧", CLASS_PIRATE: "☠",
+	CLASS_LORD: "♦", CLASS_DAIMYO: "♛", CLASS_SAMURAI: "★", CLASS_RONIN: "☆",
+	CLASS_ASHIGARU: "▲", CLASS_SPEARMAN: "▼", CLASS_ARCHER: "➶",
+	CLASS_CAVALRY: "♞", CLASS_NINJA: "✦", CLASS_KUNOICHI: "✧",
+	CLASS_MONK: "✙", CLASS_SOHEI: "⚔", CLASS_ONMYOJI: "☯",
+	CLASS_NOBLE_LADY: "♥", CLASS_GUNNER: "⊕", CLASS_GENERAL: "◆",
+	CLASS_BERSERKER: "⚡", CLASS_TACTICIAN: "⚙", CLASS_MOUNTED_ARCHER: "♘",
+	CLASS_PEGASUS: "♧", CLASS_WYVERN: "♧", CLASS_PIRATE: "☠",
+	CLASS_KUSARIGAMA: "⛓", CLASS_HATAMOTO: "♔",
 }
 
 # ── Class properties ─────────────────────────────────────────────────────────
 const FLYING_CLASSES := [CLASS_PEGASUS, CLASS_WYVERN]
-const MOUNTED_CLASSES := [CLASS_CAVALRY]
+const MOUNTED_CLASSES := [CLASS_CAVALRY, CLASS_MOUNTED_ARCHER]
 
 # ── Deploy modes ─────────────────────────────────────────────────────────────
 enum DeployMode { FORCED, FREE }

@@ -6,7 +6,7 @@ extends RefCounted
 static func create_roster() -> Dictionary:
 	var units := {}
 
-	units["nobunaga"] = _u("nobunaga", "Oda Nobunaga", Constants.CLASS_LORD, Constants.Faction.PLAYER, 10,
+	units["nobunaga"] = _u("nobunaga", "Oda Nobunaga", Constants.CLASS_DAIMYO, Constants.Faction.PLAYER, 10,
 		["masamune", "iron_yari"], Color(0.78, 0.31, 0.12),
 		"The Demon King of the Sixth Heaven. Brutal visionary who would\nshatter tradition with gunpowder and iron will. He calls himself\na demon, but his brilliance cannot be denied.",
 		"The old order crumbles before me. Only the strong survive!",
@@ -20,21 +20,21 @@ static func create_roster() -> Dictionary:
 		false, false, [],
 		{"hp":60,"str":55,"mag":30,"skl":60,"spd":60,"lck":65,"def":45,"res":30})
 
-	units["mitsuhide"] = _u("mitsuhide", "Akechi Mitsuhide", Constants.CLASS_SAMURAI, Constants.Faction.PLAYER, 8,
+	units["mitsuhide"] = _u("mitsuhide", "Akechi Mitsuhide", Constants.CLASS_RONIN, Constants.Faction.PLAYER, 8,
 		["steel_katana", "silver_katana"], Color(0.31, 0.31, 0.63),
 		"The Brilliant General of the Oda. Cultured, precise, deeply loyal\nto tradition. He serves Nobunaga faithfully — but his lord's contempt\ngnaws at something deep within him.",
 		"I fight with reason, not rage. And that makes me more dangerous.",
 		false, false, [],
 		{"hp":50,"str":60,"mag":25,"skl":75,"spd":65,"lck":40,"def":55,"res":30})
 
-	units["katsuie"] = _u("katsuie", "Shibata Katsuie", Constants.CLASS_SAMURAI, Constants.Faction.PLAYER, 7,
+	units["katsuie"] = _u("katsuie", "Shibata Katsuie", Constants.CLASS_BERSERKER, Constants.Faction.PLAYER, 7,
 		["steel_tetsubo", "iron_nodachi"], Color(0.63, 0.24, 0.24),
 		"'The Devil Shibata' — no castle has stood against his charge,\nno army has broken his will. Gruff, fearless, and completely\ndevoted to Nobunaga's cause.",
 		"Out of my way! I'll smash through anything — man, wall, or mountain!",
 		false, false, [],
 		{"hp":80,"str":75,"mag":10,"skl":45,"spd":45,"lck":25,"def":70,"res":15})
 
-	units["nagahide"] = _u("nagahide", "Niwa Nagahide", Constants.CLASS_ASHIGARU, Constants.Faction.PLAYER, 6,
+	units["nagahide"] = _u("nagahide", "Niwa Nagahide", Constants.CLASS_SPEARMAN, Constants.Faction.PLAYER, 6,
 		["steel_yari", "iron_naginata"], Color(0.31, 0.55, 0.31),
 		"Trusted administrator and general of the Oda. Where others rush\nheadlong into glory, Nagahide ensures the army is fed, supplied,\nand properly positioned.",
 		"Victory is built on preparation. Let us be thorough.",
@@ -48,7 +48,7 @@ static func create_roster() -> Dictionary:
 		false, false, [],
 		{"hp":40,"str":50,"mag":25,"skl":80,"spd":75,"lck":60,"def":30,"res":40})
 
-	units["nene"] = _u("nene", "Nene", Constants.CLASS_NINJA, Constants.Faction.PLAYER, 5,
+	units["nene"] = _u("nene", "Nene", Constants.CLASS_KUNOICHI, Constants.Faction.PLAYER, 5,
 		["kunai", "iron_bow"], Color(0.90, 0.63, 0.78),
 		"Wife of Hideyoshi, spy-mistress of the Oda, and everyone's\nsurprisingly competent big sister. Her network of informants\nstretches across all provinces.",
 		"You underestimate me because I smile. That's my greatest weapon.",
@@ -62,21 +62,21 @@ static func create_roster() -> Dictionary:
 		false, false, [],
 		{"hp":40,"str":30,"mag":65,"skl":55,"spd":55,"lck":80,"def":25,"res":70})
 
-	units["toshiie"] = _u("toshiie", "Maeda Toshiie", Constants.CLASS_ASHIGARU, Constants.Faction.PLAYER, 6,
+	units["toshiie"] = _u("toshiie", "Maeda Toshiie", Constants.CLASS_SPEARMAN, Constants.Faction.PLAYER, 6,
 		["jumonji_yari", "iron_katana"], Color(0.24, 0.63, 0.78),
 		"'The Tiger of the Maeda' — Toshiie fights with bold, aggressive\nstrokes. His cross-bladed spear is legendary, and his rivalry\nwith Hideyoshi is equally famous.",
 		"My spear leads — the rest of the army follows!",
 		false, false, [],
 		{"hp":65,"str":60,"mag":10,"skl":60,"spd":55,"lck":50,"def":60,"res":25})
 
-	units["no"] = _u("no", "No (Lady Nōhime)", Constants.CLASS_NINJA, Constants.Faction.PLAYER, 6,
+	units["no"] = _u("no", "No (Lady Nōhime)", Constants.CLASS_KUNOICHI, Constants.Faction.PLAYER, 6,
 		["iron_tanto", "heal_staff"], Color(0.71, 0.39, 0.63),
 		"Nobunaga's principal wife. Daughter of the Viper of Mino,\nNo is as sharp as any blade. Rumor says she carries a dagger\neven at the tea ceremony.",
 		"Behind this beauty lies a blade. Try me, and find out.",
 		false, false, [],
 		{"hp":40,"str":45,"mag":55,"skl":70,"spd":75,"lck":75,"def":30,"res":60})
 
-	units["ina"] = _u("ina", "Ina (Komatsuhime)", Constants.CLASS_CAVALRY, Constants.Faction.PLAYER, 5,
+	units["ina"] = _u("ina", "Ina (Komatsuhime)", Constants.CLASS_MOUNTED_ARCHER, Constants.Faction.PLAYER, 5,
 		["iron_bow", "iron_katana"], Color(0.63, 0.78, 0.63),
 		"Daughter of Honda Tadakatsu. She inherited her father's ferocity\nand her mother's grace — a mounted archer of extraordinary skill\nwho once barred even Sanada Yukimura at the castle gate.",
 		"Step back. I never miss.",
@@ -97,21 +97,21 @@ static func create_roster() -> Dictionary:
 		false, false, [],
 		{"hp":38,"str":25,"mag":70,"skl":55,"spd":60,"lck":80,"def":20,"res":75})
 
-	units["kanbei"] = _u("kanbei", "Kuroda Kanbei", Constants.CLASS_ONMYOJI, Constants.Faction.PLAYER, 8,
+	units["kanbei"] = _u("kanbei", "Kuroda Kanbei", Constants.CLASS_TACTICIAN, Constants.Faction.PLAYER, 8,
 		["kanbei_scroll", "iron_tanto"], Color(0.31, 0.27, 0.43),
 		"'The Black Monk' — Hideyoshi's brilliant, one-legged strategist.\nKanbei's plans never fail. His eccentricities are legendary:\nhe laughs at the worst moments and weeps at the strangest victories.",
 		"The enemy's plan is written on their face. I have already won.",
 		false, false, [],
 		{"hp":40,"str":25,"mag":75,"skl":75,"spd":55,"lck":55,"def":30,"res":70})
 
-	units["kiyomasa"] = _u("kiyomasa", "Kato Kiyomasa", Constants.CLASS_ASHIGARU, Constants.Faction.PLAYER, 7,
+	units["kiyomasa"] = _u("kiyomasa", "Kato Kiyomasa", Constants.CLASS_SPEARMAN, Constants.Faction.PLAYER, 7,
 		["nihongo", "steel_yari"], Color(0.78, 0.39, 0.24),
 		"'The Tiger Slayer' — Kiyomasa's reputation was forged in the\nKorean campaign where he allegedly hunted tigers bare-handed.\nHis spear is as long as his stubbornness.",
 		"If it moves and isn't on our side, my spear will settle the matter!",
 		false, false, [],
 		{"hp":70,"str":70,"mag":10,"skl":60,"spd":50,"lck":40,"def":65,"res":20})
 
-	units["fukushima"] = _u("fukushima", "Fukushima Masanori", Constants.CLASS_SAMURAI, Constants.Faction.PLAYER, 6,
+	units["fukushima"] = _u("fukushima", "Fukushima Masanori", Constants.CLASS_BERSERKER, Constants.Faction.PLAYER, 6,
 		["steel_tetsubo", "steel_katana"], Color(0.71, 0.31, 0.20),
 		"Hideyoshi's foster nephew and eternal rival of Kato Kiyomasa.\nTheir argument over who gets to charge first is more dangerous\nthan most enemy armies.",
 		"Out of the way, Kiyomasa! This kill is MINE!",
@@ -146,7 +146,7 @@ static func create_roster() -> Dictionary:
 		false, false, [],
 		{"hp":45,"str":65,"mag":30,"skl":85,"spd":80,"lck":55,"def":40,"res":50})
 
-	units["yukimura"] = _u("yukimura", "Sanada Yukimura", Constants.CLASS_ASHIGARU, Constants.Faction.ENEMY, 9,
+	units["yukimura"] = _u("yukimura", "Sanada Yukimura", Constants.CLASS_SPEARMAN, Constants.Faction.ENEMY, 9,
 		["nihongo", "steel_katana"], Color(0.86, 0.12, 0.12),
 		"Japan's greatest hero — the 'Crimson Demon of War' whose final\ncharge at Osaka shook the Tokugawa army to its core. Brave,\npassionate, and absolutely brilliant with a spear.",
 		"My spear carries the honor of the Sanada! COME!",
@@ -160,14 +160,14 @@ static func create_roster() -> Dictionary:
 		false, false, [],
 		{"hp":60,"str":60,"mag":15,"skl":65,"spd":60,"lck":50,"def":60,"res":30})
 
-	units["masayuki"] = _u("masayuki", "Sanada Masayuki", Constants.CLASS_ONMYOJI, Constants.Faction.ENEMY, 10,
+	units["masayuki"] = _u("masayuki", "Sanada Masayuki", Constants.CLASS_TACTICIAN, Constants.Faction.ENEMY, 10,
 		["kanbei_scroll", "iron_tanto"], Color(0.63, 0.16, 0.16),
 		"The greatest strategist of the Sanada clan. He held Ueda Castle\nagainst the Tokugawa twice with a fraction of their numbers.\nHis mind is a labyrinth no enemy has ever navigated safely.",
 		"You fell into my trap three steps ago. The rest is ceremony.",
 		false, true, ["nobunaga", "ieyasu"],
 		{"hp":45,"str":30,"mag":80,"skl":75,"spd":60,"lck":65,"def":35,"res":70})
 
-	units["shingen"] = _u("shingen", "Takeda Shingen", Constants.CLASS_LORD, Constants.Faction.ENEMY, 12,
+	units["shingen"] = _u("shingen", "Takeda Shingen", Constants.CLASS_DAIMYO, Constants.Faction.ENEMY, 12,
 		["odenta_mitsu", "silver_yari"], Color(0.63, 0.12, 0.12),
 		"The Tiger of Kai. Master of the cavalry charge, nemesis of Kenshin.\nHis fan — 'Swift as wind, still as forest, fierce as fire,\nimmovable as mountain' — is strategy made poetry.",
 		"WIND — FOREST — FIRE — MOUNTAIN! Takeda rides!",
@@ -202,7 +202,7 @@ static func create_roster() -> Dictionary:
 		false, false, [],
 		{"hp":55,"str":55,"mag":30,"skl":65,"spd":60,"lck":55,"def":55,"res":40})
 
-	units["kenshin"] = _u("kenshin", "Uesugi Kenshin", Constants.CLASS_LORD, Constants.Faction.ENEMY, 12,
+	units["kenshin"] = _u("kenshin", "Uesugi Kenshin", Constants.CLASS_DAIMYO, Constants.Faction.ENEMY, 12,
 		["bishamonten", "silver_katana"], Color(0.39, 0.55, 0.86),
 		"The Dragon of Echigo. The living avatar of Bishamonten,\ngod of war. He never struck first without cause — but when\nhe struck, no one could stop him. He was Shingen's greatest rival.",
 		"Bishamonten guides my blade! Who dares stand against the divine?",
@@ -223,7 +223,7 @@ static func create_roster() -> Dictionary:
 		false, false, [],
 		{"hp":60,"str":60,"mag":15,"skl":60,"spd":60,"lck":50,"def":60,"res":30})
 
-	units["masamune"] = _u("masamune", "Date Masamune", Constants.CLASS_LORD, Constants.Faction.ENEMY, 11,
+	units["masamune"] = _u("masamune", "Date Masamune", Constants.CLASS_DAIMYO, Constants.Faction.ENEMY, 11,
 		["otenta_mitsu", "silver_yari"], Color(0.12, 0.12, 0.31),
 		"The One-Eyed Dragon of Oshu. He lost his eye to smallpox and\nremoved it himself. Born too late to rule all Japan — but he\nnever stopped trying. Flamboyant, unpredictable, magnificent.",
 		"History will remember this moment — because I made it memorable!",
@@ -237,14 +237,14 @@ static func create_roster() -> Dictionary:
 		false, true, ["masamune", "any"],
 		{"hp":65,"str":65,"mag":15,"skl":60,"spd":65,"lck":50,"def":60,"res":25})
 
-	units["yoshihisa"] = _u("yoshihisa", "Shimazu Yoshihisa", Constants.CLASS_LORD, Constants.Faction.ENEMY, 10,
+	units["yoshihisa"] = _u("yoshihisa", "Shimazu Yoshihisa", Constants.CLASS_DAIMYO, Constants.Faction.ENEMY, 10,
 		["steel_nodachi", "steel_yari"], Color(0.31, 0.24, 0.55),
 		"The Shimazu lord who unified Kyushu. Master of the 'tsuridono'\nencirclement tactic — feign retreat to draw enemies into\na trap of flanking forces. Methodical and merciless.",
 		"Retreat is not weakness. It is the first move of a trap.",
 		true, false, [],
 		{"hp":70,"str":65,"mag":25,"skl":65,"spd":55,"lck":55,"def":65,"res":35})
 
-	units["yoshihiro"] = _u("yoshihiro", "Shimazu Yoshihiro", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 9,
+	units["yoshihiro"] = _u("yoshihiro", "Shimazu Yoshihiro", Constants.CLASS_BERSERKER, Constants.Faction.ENEMY, 9,
 		["fuujin_nodachi", "steel_tetsubo"], Color(0.39, 0.20, 0.63),
 		"The Demon of Sekigahara. Trapped on the losing side, Yoshihiro\ncharged directly through the Tokugawa main force to escape —\na move so audacious it became legend.",
 		"Demon? Yes. Yours, specifically. NOW DIE!",
@@ -1903,6 +1903,36 @@ static func _u(id: String, uname: String, cls: String, faction: int, level: int,
 		Constants.CLASS_PIRATE:
 			base_hp = 30; base_str = 12; base_mag = 0; base_skl = 8
 			base_spd = 10; base_lck = 6; base_def = 7; base_res = 4; base_mov = 5
+		Constants.CLASS_DAIMYO:
+			base_hp = 42; base_str = 15; base_mag = 5; base_skl = 13
+			base_spd = 11; base_lck = 9; base_def = 13; base_res = 7; base_mov = 6
+		Constants.CLASS_RONIN:
+			base_hp = 30; base_str = 12; base_mag = 2; base_skl = 13
+			base_spd = 11; base_lck = 5; base_def = 7; base_res = 3; base_mov = 5
+		Constants.CLASS_SPEARMAN:
+			base_hp = 30; base_str = 10; base_mag = 0; base_skl = 8
+			base_spd = 7; base_lck = 5; base_def = 9; base_res = 2; base_mov = 5
+		Constants.CLASS_BERSERKER:
+			base_hp = 40; base_str = 16; base_mag = 0; base_skl = 6
+			base_spd = 8; base_lck = 3; base_def = 10; base_res = 2; base_mov = 5
+		Constants.CLASS_KUNOICHI:
+			base_hp = 22; base_str = 8; base_mag = 6; base_skl = 14
+			base_spd = 15; base_lck = 10; base_def = 3; base_res = 8; base_mov = 6
+		Constants.CLASS_TACTICIAN:
+			base_hp = 22; base_str = 4; base_mag = 14; base_skl = 12
+			base_spd = 8; base_lck = 8; base_def = 4; base_res = 12; base_mov = 5
+		Constants.CLASS_MOUNTED_ARCHER:
+			base_hp = 26; base_str = 10; base_mag = 0; base_skl = 12
+			base_spd = 10; base_lck = 6; base_def = 6; base_res = 3; base_mov = 7
+		Constants.CLASS_SOHEI:
+			base_hp = 30; base_str = 10; base_mag = 8; base_skl = 9
+			base_spd = 7; base_lck = 6; base_def = 8; base_res = 8; base_mov = 5
+		Constants.CLASS_KUSARIGAMA:
+			base_hp = 24; base_str = 9; base_mag = 3; base_skl = 14
+			base_spd = 12; base_lck = 6; base_def = 5; base_res = 5; base_mov = 5
+		Constants.CLASS_HATAMOTO:
+			base_hp = 35; base_str = 13; base_mag = 2; base_skl = 11
+			base_spd = 9; base_lck = 6; base_def = 11; base_res = 4; base_mov = 6
 	var scale := level - 1
 	u.max_hp = base_hp + scale * 2
 	u.hp = u.max_hp
