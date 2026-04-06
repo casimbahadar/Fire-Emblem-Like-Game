@@ -1595,6 +1595,225 @@ static func create_roster() -> Dictionary:
 		false, false, [],
 		{"hp":50,"str":40,"mag":30,"skl":45,"spd":45,"lck":35,"def":35,"res":25})
 
+	# ── Azai clan ────────────────────────────────────────────────────────────
+	units["azai_nagamasa"] = _u("azai_nagamasa", "Azai Nagamasa", Constants.CLASS_LORD, Constants.Faction.ENEMY, 12,
+		["steel_katana", "iron_yari"], Color(0.60, 0.75, 0.85),
+		"Lord of the Azai clan in Omi. Nobunaga's brother-in-law, torn between loyalty to the Asakura and alliance with the Oda. A noble man undone by fate.",
+		"I cannot betray my honor, even for family.",
+		true, true, ["oichi"],
+		{"hp":65,"str":50,"mag":10,"skl":50,"spd":45,"lck":40,"def":45,"res":20})
+
+	units["azai_retainer1"] = _u("azai_retainer1", "Azai Samurai", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 8,
+		["iron_katana", "iron_yari"], Color(0.55, 0.70, 0.80),
+		"A loyal retainer of the Azai clan.", "",
+		false, false, [],
+		{"hp":50,"str":45,"mag":10,"skl":45,"spd":40,"lck":30,"def":35,"res":15})
+
+	# ── Ukita clan ───────────────────────────────────────────────────────────
+	units["ukita_hideie"] = _u("ukita_hideie", "Ukita Hideie", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 14,
+		["steel_katana", "steel_yari"], Color(0.70, 0.55, 0.30),
+		"Lord of Bizen. One of the Five Great Elders under Hideyoshi. Sided with the Western Army at Sekigahara.",
+		"I fight for the legacy of Lord Hideyoshi.",
+		true, false, [],
+		{"hp":60,"str":50,"mag":15,"skl":50,"spd":45,"lck":35,"def":40,"res":20})
+
+	units["ukita_retainer1"] = _u("ukita_retainer1", "Ukita Retainer", Constants.CLASS_ASHIGARU, Constants.Faction.ENEMY, 7,
+		["iron_yari"], Color(0.65, 0.50, 0.28),
+		"A soldier of the Ukita clan.", "",
+		false, false, [],
+		{"hp":50,"str":40,"mag":5,"skl":35,"spd":35,"lck":30,"def":35,"res":10})
+
+	# ── Otomo clan ───────────────────────────────────────────────────────────
+	units["otomo_sorin"] = _u("otomo_sorin", "Otomo Sorin", Constants.CLASS_GENERAL, Constants.Faction.ENEMY, 13,
+		["steel_yari", "steel_tetsubo"], Color(0.40, 0.50, 0.65),
+		"Lord of Bungo in Kyushu. A Christian daimyo who clashed with the Shimazu. Known for both diplomacy and faith.",
+		"God watches over this battle.",
+		true, false, [],
+		{"hp":65,"str":45,"mag":20,"skl":40,"spd":30,"lck":35,"def":50,"res":35})
+
+	units["otomo_dosetsu"] = _u("otomo_dosetsu", "Tachibana Dosetsu", Constants.CLASS_GENERAL, Constants.Faction.ENEMY, 16,
+		["thunder_tetsubo", "steel_yari"], Color(0.35, 0.45, 0.60),
+		"The Thunder God of Kyushu. Legendary Otomo vassal said to have been struck by lightning and survived. Father of Ginchiyo.",
+		"The thunder chose me. Now it serves the Otomo.",
+		true, true, ["ginchiyo"],
+		{"hp":70,"str":55,"mag":25,"skl":45,"spd":35,"lck":30,"def":55,"res":30})
+
+	# ── Ryuzoji clan ─────────────────────────────────────────────────────────
+	units["ryuzoji_takanobu"] = _u("ryuzoji_takanobu", "Ryuzoji Takanobu", Constants.CLASS_GENERAL, Constants.Faction.ENEMY, 14,
+		["steel_tetsubo", "steel_yari"], Color(0.50, 0.35, 0.25),
+		"The Bear of Hizen. Rose from a minor lord to dominate northwest Kyushu through sheer aggression.",
+		"Strength is the only language this world understands!",
+		true, false, [],
+		{"hp":72,"str":55,"mag":5,"skl":35,"spd":25,"lck":25,"def":55,"res":10})
+
+	# ── Miyoshi clan ─────────────────────────────────────────────────────────
+	units["miyoshi_nagayoshi"] = _u("miyoshi_nagayoshi", "Miyoshi Nagayoshi", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 15,
+		["steel_katana", "steel_yari"], Color(0.45, 0.40, 0.55),
+		"Once the most powerful man in the Kinai region. Controlled the Ashikaga shogunate from the shadows before Nobunaga's rise.",
+		"Power belongs to those who seize it.",
+		true, false, [],
+		{"hp":55,"str":50,"mag":15,"skl":55,"spd":50,"lck":40,"def":40,"res":25})
+
+	units["miyoshi_trio1"] = _u("miyoshi_trio1", "Miyoshi Yoshitsugu", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 10,
+		["iron_katana", "iron_tanto"], Color(0.42, 0.38, 0.50),
+		"One of the Miyoshi Triumvirate who schemed for power after Nagayoshi's death.", "",
+		false, false, [],
+		{"hp":50,"str":45,"mag":10,"skl":45,"spd":45,"lck":35,"def":35,"res":20})
+
+	# ── Honganji (Ikko-ikki) ─────────────────────────────────────────────────
+	units["kennyo"] = _u("kennyo", "Kennyo", Constants.CLASS_MONK, Constants.Faction.ENEMY, 15,
+		["steel_staff", "steel_tetsubo"], Color(0.80, 0.70, 0.45),
+		"Abbot of the Ishiyama Honganji. Led the Ikko-ikki warrior monks in a decade-long siege against Nobunaga. A formidable spiritual and military leader.",
+		"Faith is our fortress. We shall not yield!",
+		true, false, [],
+		{"hp":60,"str":35,"mag":55,"skl":45,"spd":35,"lck":40,"def":35,"res":55})
+
+	units["ikko_commander"] = _u("ikko_commander", "Ikko Commander", Constants.CLASS_MONK, Constants.Faction.ENEMY, 10,
+		["iron_staff", "iron_tetsubo"], Color(0.75, 0.65, 0.40),
+		"A zealous monk-warrior of the Ikko-ikki.", "",
+		false, false, [],
+		{"hp":55,"str":30,"mag":40,"skl":35,"spd":30,"lck":35,"def":30,"res":40})
+
+	# ── Tsutsui clan ─────────────────────────────────────────────────────────
+	units["tsutsui_junkei"] = _u("tsutsui_junkei", "Tsutsui Junkei", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 11,
+		["iron_katana", "iron_yari"], Color(0.50, 0.55, 0.45),
+		"Lord of Yamato. Infamous fence-sitter at Sekigahara who watched the battle before choosing the winning side.",
+		"Patience is a weapon sharper than any blade.",
+		false, false, [],
+		{"hp":48,"str":42,"mag":15,"skl":50,"spd":45,"lck":50,"def":35,"res":25})
+
+	# ── Ouchi clan ───────────────────────────────────────────────────────────
+	units["ouchi_yoshitaka"] = _u("ouchi_yoshitaka", "Ouchi Yoshitaka", Constants.CLASS_NOBLE_LADY, Constants.Faction.ENEMY, 12,
+		["iron_katana", "iron_bow"], Color(0.65, 0.40, 0.55),
+		"Cultured lord of Suo. Patron of the arts who brought Chinese and Portuguese culture to Japan. Overthrown by his vassal Sue Harukata.",
+		"Beauty endures where swords cannot.",
+		true, false, [],
+		{"hp":45,"str":30,"mag":40,"skl":45,"spd":40,"lck":45,"def":25,"res":40})
+
+	# ── Amago clan ───────────────────────────────────────────────────────────
+	units["amago_tsunehisa"] = _u("amago_tsunehisa", "Amago Tsunehisa", Constants.CLASS_GENERAL, Constants.Faction.ENEMY, 14,
+		["steel_yari", "steel_katana"], Color(0.40, 0.45, 0.35),
+		"Master strategist of the Amago clan in Izumo. Fended off the great Mori and Ouchi through cunning. Known for his eleven-stratagem victory.",
+		"Eleven plans for one castle. That is how we survive.",
+		true, false, [],
+		{"hp":65,"str":45,"mag":15,"skl":55,"spd":35,"lck":45,"def":50,"res":25})
+
+	# ── Ashikaga shogunate ───────────────────────────────────────────────────
+	units["ashikaga_yoshiaki"] = _u("ashikaga_yoshiaki", "Ashikaga Yoshiaki", Constants.CLASS_NOBLE_LADY, Constants.Faction.ENEMY, 10,
+		["iron_katana"], Color(0.55, 0.40, 0.65),
+		"The last Ashikaga shogun. Installed by Nobunaga, then plotted against him. A puppet who dreamed of pulling his own strings.",
+		"I am the shogun! The rightful ruler of Japan!",
+		true, true, ["nobunaga"],
+		{"hp":38,"str":25,"mag":30,"skl":40,"spd":35,"lck":35,"def":20,"res":35})
+
+	units["ashikaga_guard1"] = _u("ashikaga_guard1", "Shogunate Guard", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 9,
+		["iron_katana", "iron_yari"], Color(0.50, 0.38, 0.60),
+		"A guard loyal to the Ashikaga shogunate.", "",
+		false, false, [],
+		{"hp":45,"str":42,"mag":5,"skl":42,"spd":38,"lck":30,"def":38,"res":15})
+
+	# ── Rokkaku clan ─────────────────────────────────────────────────────────
+	units["rokkaku_yoshikata"] = _u("rokkaku_yoshikata", "Rokkaku Yoshikata", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 10,
+		["iron_katana", "iron_bow"], Color(0.50, 0.60, 0.40),
+		"Lord of southern Omi. Bitter rival of the Azai and early obstacle to Nobunaga's march on Kyoto.",
+		"Omi is mine. No Owari upstart will change that.",
+		true, false, [],
+		{"hp":50,"str":42,"mag":10,"skl":42,"spd":40,"lck":35,"def":38,"res":15})
+
+	# ── Bessho clan ──────────────────────────────────────────────────────────
+	units["bessho_nagaharu"] = _u("bessho_nagaharu", "Bessho Nagaharu", Constants.CLASS_GENERAL, Constants.Faction.ENEMY, 11,
+		["steel_yari", "iron_tetsubo"], Color(0.45, 0.50, 0.40),
+		"Lord of Miki Castle in Harima. Held out against Hideyoshi's siege for two years before starving. A tragic figure of loyalty.",
+		"We will not surrender while rice remains.",
+		true, false, [],
+		{"hp":60,"str":40,"mag":5,"skl":38,"spd":30,"lck":30,"def":50,"res":15})
+
+	# ── Araki clan ───────────────────────────────────────────────────────────
+	units["araki_murashige"] = _u("araki_murashige", "Araki Murashige", Constants.CLASS_CAVALRY, Constants.Faction.ENEMY, 12,
+		["steel_katana", "iron_yari"], Color(0.55, 0.40, 0.35),
+		"An Oda vassal who unexpectedly rebelled. Fled his castle at Arioka, abandoning his family. Later became a tea master.",
+		"I chose freedom over obedience. History will judge.",
+		true, true, ["nobunaga"],
+		{"hp":52,"str":48,"mag":5,"skl":42,"spd":48,"lck":30,"def":38,"res":15})
+
+	# ── Hosokawa clan ────────────────────────────────────────────────────────
+	units["hosokawa_fujitaka"] = _u("hosokawa_fujitaka", "Hosokawa Fujitaka", Constants.CLASS_SAMURAI, Constants.Faction.ALLY, 13,
+		["steel_katana", "iron_bow"], Color(0.45, 0.50, 0.65),
+		"Poet, scholar, and warrior. Master of many arts and a key Oda ally. Father of Hosokawa Tadaoki, father-in-law of Gracia.",
+		"The brush and the blade are one.",
+		false, false, [],
+		{"hp":50,"str":42,"mag":25,"skl":55,"spd":45,"lck":45,"def":35,"res":30})
+
+	units["hosokawa_tadaoki"] = _u("hosokawa_tadaoki", "Hosokawa Tadaoki", Constants.CLASS_SAMURAI, Constants.Faction.ALLY, 11,
+		["steel_katana", "iron_yari"], Color(0.42, 0.48, 0.60),
+		"Fierce warrior and husband of Gracia. Torn between love and duty. Sided with Tokugawa at Sekigahara.",
+		"I will protect what matters, even from myself.",
+		false, false, [],
+		{"hp":50,"str":48,"mag":10,"skl":48,"spd":48,"lck":35,"def":38,"res":20})
+
+	# ── Hatakeyama clan ──────────────────────────────────────────────────────
+	units["hatakeyama_yoshitsugu"] = _u("hatakeyama_yoshitsugu", "Hatakeyama Yoshitsugu", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 9,
+		["iron_katana", "iron_yari"], Color(0.50, 0.45, 0.50),
+		"Lord of Kawachi. A weakened Hatakeyama daimyo caught between Miyoshi ambitions and internal strife.",
+		"Even a crumbling house has its pride.",
+		false, false, [],
+		{"hp":45,"str":38,"mag":10,"skl":40,"spd":38,"lck":30,"def":35,"res":20})
+
+	# ── Anegakoji clan ───────────────────────────────────────────────────────
+	units["anegakoji_yoritsuna"] = _u("anegakoji_yoritsuna", "Anegakoji Yoritsuna", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 8,
+		["iron_katana", "iron_bow"], Color(0.45, 0.55, 0.45),
+		"Lord of Hida Province. A minor daimyo who resisted Oda expansion into the mountains.",
+		"These mountains are our fortress.",
+		false, false, [],
+		{"hp":42,"str":38,"mag":5,"skl":42,"spd":40,"lck":35,"def":32,"res":15})
+
+	# ── Satake clan ──────────────────────────────────────────────────────────
+	units["satake_yoshishige"] = _u("satake_yoshishige", "Satake Yoshishige", Constants.CLASS_CAVALRY, Constants.Faction.ENEMY, 12,
+		["steel_katana", "iron_yari"], Color(0.40, 0.50, 0.55),
+		"The Devil Yoshishige. Lord of Hitachi known for his ferocity. Fought the Hojo and Date for supremacy in the Kanto.",
+		"They call me devil. Good. Let them fear.",
+		true, false, [],
+		{"hp":55,"str":50,"mag":5,"skl":42,"spd":45,"lck":30,"def":42,"res":15})
+
+	# ── Nanbu clan ───────────────────────────────────────────────────────────
+	units["nanbu_harumasa"] = _u("nanbu_harumasa", "Nanbu Harumasa", Constants.CLASS_CAVALRY, Constants.Faction.ENEMY, 10,
+		["iron_katana", "iron_yari"], Color(0.40, 0.45, 0.50),
+		"Lord of the Nanbu in far northern Mutsu. Rivals of the Date for control of the Tohoku region.",
+		"The north does not bend easily.",
+		false, false, [],
+		{"hp":50,"str":42,"mag":5,"skl":40,"spd":42,"lck":30,"def":38,"res":15})
+
+	# ── Mogami clan ──────────────────────────────────────────────────────────
+	units["mogami_yoshiaki"] = _u("mogami_yoshiaki", "Mogami Yoshiaki", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 12,
+		["steel_katana", "iron_yari"], Color(0.50, 0.45, 0.40),
+		"The Fox of Dewa. Cunning lord who expanded Mogami power through diplomacy and well-timed betrayals. Ieyasu's northern ally at Sekigahara.",
+		"A fox survives where wolves perish.",
+		true, false, [],
+		{"hp":48,"str":42,"mag":15,"skl":52,"spd":48,"lck":50,"def":35,"res":25})
+
+	# ── Murakami Navy ────────────────────────────────────────────────────────
+	units["murakami_takeyoshi"] = _u("murakami_takeyoshi", "Murakami Takeyoshi", Constants.CLASS_PIRATE, Constants.Faction.ENEMY, 13,
+		["steel_katana", "iron_bow"], Color(0.25, 0.35, 0.55),
+		"Admiral of the Murakami Navy. Controlled the Seto Inland Sea. His fire ships devastated Oda's first naval assault before being defeated by iron ships.",
+		"The sea belongs to no lord but us.",
+		true, true, ["hideyoshi"],
+		{"hp":55,"str":48,"mag":5,"skl":50,"spd":50,"lck":40,"def":35,"res":20})
+
+	# ── Wako/pirate forces ───────────────────────────────────────────────────
+	units["wako_captain"] = _u("wako_captain", "Wako Captain", Constants.CLASS_PIRATE, Constants.Faction.ENEMY, 9,
+		["iron_katana", "iron_tanto"], Color(0.30, 0.30, 0.45),
+		"A raider from the sea. Neither samurai nor peasant, bound only by plunder.", "",
+		false, false, [],
+		{"hp":45,"str":42,"mag":5,"skl":42,"spd":48,"lck":35,"def":30,"res":15})
+
+	# ── Sue clan (Ouchi rebels) ──────────────────────────────────────────────
+	units["sue_harukata"] = _u("sue_harukata", "Sue Harukata", Constants.CLASS_SAMURAI, Constants.Faction.ENEMY, 12,
+		["steel_katana", "iron_yari"], Color(0.50, 0.35, 0.35),
+		"The vassal who overthrew his lord Ouchi Yoshitaka. Rose through betrayal, fell to Mori Motonari's genius at Itsukushima.",
+		"I took what was mine by right of strength.",
+		true, false, [],
+		{"hp":52,"str":48,"mag":5,"skl":45,"spd":42,"lck":25,"def":40,"res":15})
+
 	return units
 
 
