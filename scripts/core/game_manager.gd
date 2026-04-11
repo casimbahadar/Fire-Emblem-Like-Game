@@ -87,6 +87,15 @@ var _danger_zone_visible: bool = false
 var _stat_sheet_visible: bool = false
 var _stat_sheet_layer: CanvasLayer = null
 
+# ── Theme colors for the parchment-style stat sheet ─────────────────────────
+const _PARCHMENT_BG    := Color(0.93, 0.86, 0.69)   # warm cream parchment
+const _PARCHMENT_DARK  := Color(0.78, 0.66, 0.42)   # darker parchment border
+const _PARCHMENT_BAR   := Color(0.32, 0.18, 0.10)   # dark brown panel
+const _PARCHMENT_BAR2  := Color(0.45, 0.27, 0.16)   # lighter brown row
+const _PARCHMENT_INK   := Color(0.20, 0.13, 0.08)   # dark ink for text on cream
+const _PARCHMENT_GOLD  := Color(0.78, 0.55, 0.18)   # gold accent
+const _PARCHMENT_CREAM := Color(0.98, 0.93, 0.78)   # cream label text on dark
+
 # ── Move undo tracking ──────────────────────────────────────────────────────
 var _pre_move_pos: Vector2i = Vector2i.ZERO
 
@@ -1883,125 +1892,253 @@ func _open_stat_sheet() -> void:
 
 	var vp_size := get_viewport().get_visible_rect().size
 
-	# Dark overlay
+	# ── Dark overlay ────────────────────────────────────────────────────────
 	var overlay := ColorRect.new()
 	overlay.size = vp_size
-	overlay.color = Color(0, 0, 0, 0.75)
+	overlay.color = Color(0, 0, 0, 0.78)
 	_stat_sheet_layer.add_child(overlay)
 
-	# Main panel
-	var panel := PanelContainer.new()
-	panel.size = Vector2(min(500, vp_size.x - 40), min(500, vp_size.y - 80))
-	panel.position = Vector2((vp_size.x - panel.size.x) / 2, (vp_size.y - panel.size.y) / 2)
-	_stat_sheet_layer.add_child(panel)
+	# ── Parchment frame (the "page") ────────────────────────────────────────
+	var sheet_w: float = min(760.0, vp_size.x - 40.0)
+	var sheet_h: float = min(440.0, vp_size.y - 80.0)
+	var sheet_x: float = (vp_size.x - sheet_w) / 2.0
+	var sheet_y: float = (vp_size.y - sheet_h) / 2.0
 
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_bottom", 16)
-	panel.add_child(margin)
+	# Outer dark border
+	var border := ColorRect.new()
+	border.position = Vector2(sheet_x - 4, sheet_y - 4)
+	border.size = Vector2(sheet_w + 8, sheet_h + 8)
+	border.color = _PARCHMENT_BAR
+	_stat_sheet_layer.add_child(border)
 
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 6)
-	margin.add_child(vbox)
+	# Parchment background
+	var sheet_bg := ColorRect.new()
+	sheet_bg.position = Vector2(sheet_x, sheet_y)
+	sheet_bg.size = Vector2(sheet_w, sheet_h)
+	sheet_bg.color = _PARCHMENT_BG
+	_stat_sheet_layer.add_child(sheet_bg)
 
-	# Name + class header
-	var header := Label.new()
-	header.text = "%s  —  %s Lv.%d" % [data.name, data.unit_class, data.level]
-	header.add_theme_font_size_override("font_size", 22)
-	header.add_theme_color_override("font_color", Color(0.85, 0.65, 0.13))
-	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(header)
+	# Inner darker border line
+	var inner_border := ColorRect.new()
+	inner_border.position = Vector2(sheet_x + 6, sheet_y + 6)
+	inner_border.size = Vector2(sheet_w - 12, sheet_h - 12)
+	inner_border.color = _PARCHMENT_BG
+	# Draw 1px darker outline by stacking another rect behind
+	var inner_outline := ColorRect.new()
+	inner_outline.position = Vector2(sheet_x + 5, sheet_y + 5)
+	inner_outline.size = Vector2(sheet_w - 10, sheet_h - 10)
+	inner_outline.color = _PARCHMENT_DARK
+	_stat_sheet_layer.add_child(inner_outline)
+	_stat_sheet_layer.add_child(inner_border)
 
-	# Symbol
-	var sym := Label.new()
-	sym.text = Constants.CLASS_SYMBOLS.get(data.unit_class, "★")
-	sym.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sym.add_theme_font_size_override("font_size", 36)
-	vbox.add_child(sym)
+	# ── Layout: left column (info) + right column (portrait) ────────────────
+	var pad: float = 16.0
+	var portrait_w: float = sheet_h - pad * 2.0  # square-ish portrait area
+	var info_w: float = sheet_w - portrait_w - pad * 3.0
+	var left_x: float = sheet_x + pad
+	var right_x: float = sheet_x + pad + info_w + pad
+	var top_y: float = sheet_y + pad
 
-	# HP bar
-	var hp_line := Label.new()
-	hp_line.text = "HP: %d / %d" % [data.hp, data.max_hp]
-	hp_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_line.add_theme_font_size_override("font_size", 16)
-	vbox.add_child(hp_line)
+	# ── Name plate (dark brown bar with cream text) ─────────────────────────
+	var name_h: float = 44.0
+	var name_bar := ColorRect.new()
+	name_bar.position = Vector2(left_x, top_y)
+	name_bar.size = Vector2(info_w, name_h)
+	name_bar.color = _PARCHMENT_BAR
+	_stat_sheet_layer.add_child(name_bar)
 
-	# Stats grid (2 columns)
-	var sgrid := GridContainer.new()
-	sgrid.columns = 4
-	sgrid.add_theme_constant_override("h_separation", 20)
-	sgrid.add_theme_constant_override("v_separation", 4)
-	vbox.add_child(sgrid)
+	# Gold side accent on name bar
+	var name_accent := ColorRect.new()
+	name_accent.position = Vector2(left_x + info_w - 4, top_y)
+	name_accent.size = Vector2(4, name_h)
+	name_accent.color = _PARCHMENT_GOLD
+	_stat_sheet_layer.add_child(name_accent)
 
+	var name_label := Label.new()
+	name_label.position = Vector2(left_x + 14, top_y + 4)
+	name_label.size = Vector2(info_w - 28, name_h - 8)
+	name_label.text = data.name
+	name_label.add_theme_font_size_override("font_size", 26)
+	name_label.add_theme_color_override("font_color", _PARCHMENT_CREAM)
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_stat_sheet_layer.add_child(name_label)
+
+	# ── Level row ────────────────────────────────────────────────────────────
+	var row_h: float = 32.0
+	var row_y: float = top_y + name_h + 6.0
+
+	var lv_bar := ColorRect.new()
+	lv_bar.position = Vector2(left_x, row_y)
+	lv_bar.size = Vector2(info_w, row_h)
+	lv_bar.color = _PARCHMENT_BAR2
+	_stat_sheet_layer.add_child(lv_bar)
+
+	var lv_tag := Label.new()
+	lv_tag.position = Vector2(left_x + 12, row_y)
+	lv_tag.size = Vector2(60, row_h)
+	lv_tag.text = "LV"
+	lv_tag.add_theme_font_size_override("font_size", 18)
+	lv_tag.add_theme_color_override("font_color", _PARCHMENT_CREAM)
+	lv_tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_stat_sheet_layer.add_child(lv_tag)
+
+	var lv_val := Label.new()
+	lv_val.position = Vector2(left_x + 70, row_y)
+	lv_val.size = Vector2(info_w - 80, row_h)
+	lv_val.text = "%d / %d" % [data.level, data.level]
+	lv_val.add_theme_font_size_override("font_size", 18)
+	lv_val.add_theme_color_override("font_color", _PARCHMENT_CREAM)
+	lv_val.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_stat_sheet_layer.add_child(lv_val)
+
+	# ── Stats block (alternating brown rows) ─────────────────────────────────
 	var stats := [
 		["STR", data.str_], ["MAG", data.mag],
 		["SKL", data.skl], ["SPD", data.spd],
-		["DEF", data.def_], ["RES", data.res],
-		["LCK", data.lck], ["MOV", data.mov],
+		["LCK", data.lck], ["DEF", data.def_],
+		["RES", data.res], ["MOV", data.mov],
 	]
-	for s in stats:
-		var lbl := Label.new()
-		lbl.text = "%s" % s[0]
-		lbl.add_theme_font_size_override("font_size", 14)
-		lbl.add_theme_color_override("font_color", Color(0.7, 0.65, 0.55))
-		sgrid.add_child(lbl)
-		var val := Label.new()
-		val.text = "%d" % s[1]
-		val.add_theme_font_size_override("font_size", 14)
-		sgrid.add_child(val)
+	var stats_y: float = row_y + row_h + 6.0
+	var stat_row_h: float = 26.0
+	for i in range(stats.size()):
+		var sy: float = stats_y + i * stat_row_h
+		var bg := ColorRect.new()
+		bg.position = Vector2(left_x, sy)
+		bg.size = Vector2(info_w, stat_row_h - 2)
+		bg.color = _PARCHMENT_BAR if i % 2 == 0 else _PARCHMENT_BAR2
+		_stat_sheet_layer.add_child(bg)
 
-	# Separator
-	var sep := HSeparator.new()
-	vbox.add_child(sep)
+		var name_lbl := Label.new()
+		name_lbl.position = Vector2(left_x + 12, sy)
+		name_lbl.size = Vector2(60, stat_row_h - 2)
+		name_lbl.text = stats[i][0]
+		name_lbl.add_theme_font_size_override("font_size", 14)
+		name_lbl.add_theme_color_override("font_color", _PARCHMENT_CREAM)
+		name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_stat_sheet_layer.add_child(name_lbl)
 
-	# Weapons list
-	var wep_header := Label.new()
-	wep_header.text = "Weapons"
-	wep_header.add_theme_font_size_override("font_size", 16)
-	wep_header.add_theme_color_override("font_color", Color(0.85, 0.65, 0.13))
-	vbox.add_child(wep_header)
+		var val_lbl := Label.new()
+		val_lbl.position = Vector2(left_x + 80, sy)
+		val_lbl.size = Vector2(info_w - 90, stat_row_h - 2)
+		val_lbl.text = "%d" % stats[i][1]
+		val_lbl.add_theme_font_size_override("font_size", 14)
+		val_lbl.add_theme_color_override("font_color", _PARCHMENT_CREAM)
+		val_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_stat_sheet_layer.add_child(val_lbl)
 
-	for i in range(data.weapons.size()):
-		var w: Dictionary = data.weapons[i]
-		var equipped_mark := " [E]" if i == data.equipped_weapon_index else ""
-		var wlbl := Label.new()
-		wlbl.text = "%s%s  Mt:%d  Hit:%d  Rng:%d-%d" % [
-			w.get("name", "???"), equipped_mark,
-			w.get("might", 0), w.get("hit", 0),
-			w.get("min_range", 1), w.get("max_range", 1)]
-		wlbl.add_theme_font_size_override("font_size", 13)
-		vbox.add_child(wlbl)
+	# ── Inventory row (equipped weapon as the "vulnerary" line) ─────────────
+	var inv_y: float = stats_y + stats.size() * stat_row_h + 8.0
+	var inv_h: float = 32.0
+	var inv_bar := ColorRect.new()
+	inv_bar.position = Vector2(left_x, inv_y)
+	inv_bar.size = Vector2(info_w, inv_h)
+	inv_bar.color = _PARCHMENT_BAR
+	_stat_sheet_layer.add_child(inv_bar)
 
-	if data.weapons.is_empty():
-		var no_wep := Label.new()
-		no_wep.text = "Unarmed"
-		no_wep.add_theme_font_size_override("font_size", 13)
-		no_wep.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-		vbox.add_child(no_wep)
+	var inv_label := Label.new()
+	inv_label.position = Vector2(left_x + 14, inv_y)
+	inv_label.size = Vector2(info_w - 28, inv_h)
+	var equipped_w: Dictionary = data.equipped
+	if equipped_w.is_empty():
+		inv_label.text = "Unarmed"
+	else:
+		inv_label.text = "%s   Mt %d  Hit %d" % [
+			equipped_w.get("name", "???"),
+			equipped_w.get("might", 0),
+			equipped_w.get("hit", 0)]
+	inv_label.add_theme_font_size_override("font_size", 14)
+	inv_label.add_theme_color_override("font_color", _PARCHMENT_CREAM)
+	inv_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_stat_sheet_layer.add_child(inv_label)
 
-	# Bio
-	if not data.bio.is_empty():
-		var sep2 := HSeparator.new()
-		vbox.add_child(sep2)
-		var bio_lbl := Label.new()
-		bio_lbl.text = data.bio
-		bio_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		bio_lbl.add_theme_font_size_override("font_size", 12)
-		bio_lbl.add_theme_color_override("font_color", Color(0.7, 0.67, 0.6))
-		vbox.add_child(bio_lbl)
+	# ── Right side: portrait area ────────────────────────────────────────────
+	var portrait_bg := ColorRect.new()
+	portrait_bg.position = Vector2(right_x, top_y)
+	portrait_bg.size = Vector2(portrait_w, portrait_w)
+	portrait_bg.color = _PARCHMENT_DARK
+	_stat_sheet_layer.add_child(portrait_bg)
 
-	# Close hint
+	var portrait_inner := ColorRect.new()
+	portrait_inner.position = Vector2(right_x + 4, top_y + 4)
+	portrait_inner.size = Vector2(portrait_w - 8, portrait_w - 8)
+	portrait_inner.color = _PARCHMENT_BG.lerp(data.color, 0.15)
+	_stat_sheet_layer.add_child(portrait_inner)
+
+	var portrait_tex := _try_load_portrait(data)
+	if portrait_tex != null:
+		var pic := TextureRect.new()
+		pic.position = Vector2(right_x + 4, top_y + 4)
+		pic.size = Vector2(portrait_w - 8, portrait_w - 8)
+		pic.texture = portrait_tex
+		pic.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		_stat_sheet_layer.add_child(pic)
+	else:
+		# Fallback: huge class symbol over a colored bg
+		var sym := Label.new()
+		sym.position = Vector2(right_x + 4, top_y + 4)
+		sym.size = Vector2(portrait_w - 8, portrait_w - 8)
+		sym.text = Constants.CLASS_SYMBOLS.get(data.unit_class, "★")
+		sym.add_theme_font_size_override("font_size", int(portrait_w * 0.55))
+		sym.add_theme_color_override("font_color", data.color)
+		sym.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sym.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_stat_sheet_layer.add_child(sym)
+
+		var class_lbl := Label.new()
+		class_lbl.position = Vector2(right_x + 4, top_y + portrait_w - 32)
+		class_lbl.size = Vector2(portrait_w - 8, 24)
+		class_lbl.text = data.unit_class
+		class_lbl.add_theme_font_size_override("font_size", 14)
+		class_lbl.add_theme_color_override("font_color", _PARCHMENT_INK)
+		class_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_stat_sheet_layer.add_child(class_lbl)
+
+	# ── HP line below portrait ───────────────────────────────────────────────
+	var hp_y: float = top_y + portrait_w + 8.0
+	var hp_lbl := Label.new()
+	hp_lbl.position = Vector2(right_x, hp_y)
+	hp_lbl.size = Vector2(portrait_w, 24)
+	hp_lbl.text = "HP  %d / %d" % [data.hp, data.max_hp]
+	hp_lbl.add_theme_font_size_override("font_size", 16)
+	hp_lbl.add_theme_color_override("font_color", _PARCHMENT_INK)
+	hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stat_sheet_layer.add_child(hp_lbl)
+
+	# ── Close hint ───────────────────────────────────────────────────────────
 	var hint := Label.new()
-	hint.text = "Press any key to close"
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.position = Vector2(sheet_x, sheet_y + sheet_h - 22)
+	hint.size = Vector2(sheet_w, 18)
+	hint.text = "Tap or press any key to close"
 	hint.add_theme_font_size_override("font_size", 11)
-	hint.add_theme_color_override("font_color", Color(0.4, 0.38, 0.35))
-	vbox.add_child(hint)
+	hint.add_theme_color_override("font_color", _PARCHMENT_BAR)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stat_sheet_layer.add_child(hint)
 
 	EventBus.stat_sheet_opened.emit(unit_node)
+
+
+# ── Portrait loader with graceful fallback ──────────────────────────────────
+# Returns a Texture2D if a portrait file exists for the unit, else null.
+# Search order:
+#   1. Explicit data.portrait_path (if set in roster)
+#   2. res://assets/portraits/<unit_id>.png
+#   3. res://assets/portraits/<unit_id>.jpg
+#   4. res://assets/portraits/classes/<class_lower>.png
+func _try_load_portrait(data: UnitData) -> Texture2D:
+	var candidates: Array[String] = []
+	if not data.portrait_path.is_empty():
+		candidates.append(data.portrait_path)
+	candidates.append("res://assets/portraits/%s.png" % data.unit_id)
+	candidates.append("res://assets/portraits/%s.jpg" % data.unit_id)
+	var class_slug := data.unit_class.to_lower().replace(" ", "_")
+	candidates.append("res://assets/portraits/classes/%s.png" % class_slug)
+	for path in candidates:
+		if ResourceLoader.exists(path):
+			var tex := load(path)
+			if tex is Texture2D:
+				return tex
+	return null
 
 
 func _close_stat_sheet() -> void:

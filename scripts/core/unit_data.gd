@@ -46,6 +46,7 @@ extends Resource
 @export var color: Color = Color.WHITE
 @export var portrait_quote: String = ""
 @export var bio: String = ""
+@export var portrait_path: String = ""  # Optional res:// path to portrait image
 
 # ── Turn state (not saved) ──────────────────────────────────────────────────
 var has_moved: bool = false
