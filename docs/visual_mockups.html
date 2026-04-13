@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sengoku Tactics — Visual Mockups</title>
+<style>
+  body {
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    background: #1a1a1a;
+    color: #ddd;
+    margin: 0;
+    padding: 24px;
+    line-height: 1.5;
+  }
+  h1 { color: #d9a64a; font-weight: normal; }
+  h2 {
+    color: #d9a64a;
+    border-bottom: 1px solid #444;
+    padding-bottom: 6px;
+    margin-top: 40px;
+  }
+  .note {
+    background: #2a2a2a;
+    border-left: 4px solid #d9a64a;
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 14px;
+    color: #bbb;
+  }
+  .screen {
+    background: #0a0a0a;
+    padding: 24px;
+    border-radius: 8px;
+    margin: 16px 0 32px 0;
+    display: inline-block;
+  }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; }
+
+  /* ════════════════════════════════════════════════════════════════════
+     STAT SHEET — exact colors from game_manager.gd _PARCHMENT_* constants
+     ═══════════════════════════════════════════════════════════════════ */
+  .stat-sheet {
+    width: 760px;
+    height: 440px;
+    background: rgb(237, 219, 176);  /* _PARCHMENT_BG */
+    border: 4px solid rgb(82, 46, 26);  /* _PARCHMENT_BAR border */
+    box-sizing: border-box;
+    position: relative;
+    box-shadow: 0 0 4px rgb(199, 168, 107) inset;
+    padding: 16px;
+    display: flex;
+    gap: 16px;
+  }
+  .stat-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .stat-portrait-col { width: 408px; display: flex; flex-direction: column; }
+  .name-bar {
+    background: rgb(82, 46, 26);
+    color: rgb(250, 237, 199);
+    padding: 8px 14px;
+    height: 44px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    font-size: 26px;
+    font-family: serif;
+    position: relative;
+  }
+  .name-bar::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: rgb(199, 140, 46);  /* gold accent */
+  }
+  .lv-row {
+    background: rgb(115, 69, 41);
+    color: rgb(250, 237, 199);
+    height: 32px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    font-size: 18px;
+    font-family: serif;
+  }
+  .lv-row .tag { font-weight: bold; }
+  .stat-row {
+    height: 24px;
+    color: rgb(250, 237, 199);
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    font-family: serif;
+  }
+  .stat-row.even { background: rgb(82, 46, 26); }
+  .stat-row.odd  { background: rgb(115, 69, 41); }
+  .stat-row .tag { width: 60px; font-weight: bold; }
+  .stat-row .val { flex: 1; }
+  .inv-bar {
+    background: rgb(82, 46, 26);
+    color: rgb(250, 237, 199);
+    height: 32px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    margin-top: 8px;
+    font-family: serif;
+  }
+  .portrait-frame {
+    width: 408px;
+    height: 408px;
+    background: rgb(199, 168, 107);  /* _PARCHMENT_DARK */
+    padding: 4px;
+    box-sizing: border-box;
+  }
+  .portrait-inner {
+    width: 100%;
+    height: 100%;
+    background: rgb(220, 200, 156);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+  }
+  .portrait-inner .symbol {
+    font-size: 220px;
+    color: rgb(199, 79, 31);  /* Nobunaga's data.color (0.78, 0.31, 0.12) */
+    line-height: 1;
+  }
+  .portrait-inner .class-name {
+    position: absolute;
+    bottom: 8px;
+    width: 100%;
+    text-align: center;
+    color: rgb(51, 33, 20);
+    font-size: 14px;
+    font-family: serif;
+  }
+  .hp-line {
+    text-align: center;
+    color: rgb(51, 33, 20);
+    font-size: 16px;
+    font-family: serif;
+    margin-top: 8px;
+  }
+  .close-hint {
+    position: absolute;
+    bottom: 4px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: rgb(82, 46, 26);
+    font-size: 11px;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     BATTLE UI — top bar, info panel, units, terrain
+     ═══════════════════════════════════════════════════════════════════ */
+  .battle-screen {
+    width: 800px;
+    height: 480px;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+  }
+  .top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: rgba(20, 16, 12, 0.92);
+    border-bottom: 1px solid rgb(82, 46, 26);
+    color: rgb(250, 237, 199);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-family: serif;
+    font-size: 16px;
+    z-index: 10;
+  }
+  .top-bar .turn { width: 33%; }
+  .top-bar .chapter { width: 34%; text-align: center; color: rgb(217, 166, 74); }
+  .top-bar .phase { width: 33%; text-align: right; color: rgb(108, 175, 247); }
+
+  .info-panel {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 280px;
+    height: 220px;
+    background: rgba(20, 16, 12, 0.92);
+    border: 1px solid rgb(82, 46, 26);
+    color: rgb(250, 237, 199);
+    padding: 12px;
+    box-sizing: border-box;
+    font-family: serif;
+    font-size: 13px;
+    z-index: 10;
+  }
+  .info-panel .name { color: rgb(217, 166, 74); font-size: 16px; }
+  .info-panel .class-line { color: #bbb; margin-bottom: 6px; }
+  .info-panel .hp-bar {
+    background: #333;
+    height: 12px;
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 4px 0;
+  }
+  .info-panel .hp-fill {
+    background: rgb(61, 168, 84);  /* player HP */
+    height: 100%;
+    width: 75%;
+  }
+  .info-panel table {
+    width: 100%;
+    margin: 6px 0;
+    border-collapse: collapse;
+  }
+  .info-panel td {
+    color: #ccc;
+    font-size: 12px;
+    padding: 1px 4px;
+  }
+  .info-panel td.k { color: rgb(178, 166, 140); }
+
+  .grid-container {
+    position: absolute;
+    top: 40px;
+    left: 0;
+    right: 288px;
+    bottom: 0;
+    overflow: hidden;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(15, 32px);
+    grid-template-rows: repeat(10, 32px);
+    width: 480px;
+    height: 320px;
+    margin: 24px;
+    position: relative;
+  }
+  .tile {
+    position: relative;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  }
+  /* Terrain colors from constants.gd TERRAIN_COLORS */
+  .t0 { background: rgb(115, 166, 77); }   /* PLAIN */
+  .t1 { background: rgb(38, 102, 31); }    /* FOREST */
+  .t2 { background: rgb(115, 97, 71); }    /* MOUNTAIN */
+  .t3 { background: rgb(51, 102, 179); }   /* RIVER */
+  .t4 { background: rgb(128, 97, 56); }    /* BRIDGE */
+  .t5 { background: rgb(89, 77, 64); }     /* FORT */
+  .t6 { background: rgb(140, 115, 77); }   /* VILLAGE */
+  .t7 { background: rgb(77, 71, 89); }     /* CASTLE */
+  .t8 { background: rgb(140, 128, 89); }   /* ROAD */
+
+  .seize {
+    position: absolute;
+    inset: 0;
+    background: rgba(217, 166, 33, 0.35);
+  }
+  .seize::after {
+    content: "";
+    position: absolute;
+    top: 25%; left: 25%;
+    width: 50%; height: 50%;
+    background: rgba(217, 166, 33, 0.6);
+  }
+
+  .unit {
+    position: absolute;
+    width: 26px; height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: white;
+    border: 1px solid;
+    box-sizing: border-box;
+  }
+  .unit.player { background: rgba(38, 64, 140, 0.9); border-color: rgba(102, 153, 255, 0.8); }
+  .unit.enemy  { background: rgba(140, 31, 31, 0.9); border-color: rgba(255, 102, 102, 0.8); }
+  .unit .hp {
+    position: absolute;
+    bottom: -1px; left: 0;
+    height: 3px; width: 100%;
+    background: rgba(0,0,0,0.7);
+  }
+  .unit .hp::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: rgb(61, 168, 84);
+  }
+  .unit.enemy .hp::after { background: rgb(191, 56, 43); }
+
+  .cursor {
+    position: absolute;
+    width: 32px; height: 32px;
+    border: 2px solid rgb(255, 230, 100);
+    box-sizing: border-box;
+    box-shadow: 0 0 6px rgba(255, 230, 100, 0.6);
+    pointer-events: none;
+  }
+  .move-overlay {
+    position: absolute;
+    width: 32px; height: 32px;
+    background: rgba(77, 128, 255, 0.35);
+    pointer-events: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     MAP OVERVIEW — full chapter 1 map at smaller scale
+     ═══════════════════════════════════════════════════════════════════ */
+  .map-overview .grid {
+    grid-template-columns: repeat(15, 26px);
+    grid-template-rows: repeat(10, 26px);
+    width: 390px;
+    height: 260px;
+    margin: 16px 0;
+  }
+
+  pre.legend {
+    background: #1f1f1f;
+    border: 1px solid #333;
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #bbb;
+  }
+</style>
+</head>
+<body>
+
+<h1>Sengoku Tactics — Visual Mockups</h1>
+
+<div class="note">
+  These mockups use the <strong>exact colors, sizes, and layouts</strong>
+  defined in <code>game_manager.gd</code> and <code>constants.gd</code>.
+  They are HTML/CSS approximations of what Godot will render — not actual
+  game screenshots. Real fonts, kerning, and pixel-snapping will differ
+  slightly when running in Godot, but proportions and colors are accurate.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2>1. Stat Sheet (Nobunaga, Chapter 1)</h2>
+<p>Opens when you press <code>I</code> or tap a unit twice. Reskinned to
+match the parchment Fire Emblem look you provided.</p>
+
+<div class="screen">
+  <div class="stat-sheet">
+    <div class="stat-info">
+      <div class="name-bar">Oda Nobunaga</div>
+      <div class="lv-row">
+        <span class="tag">LV</span><span>10 / 10</span>
+      </div>
+      <div class="stat-row even"><span class="tag">STR</span><span class="val">28</span></div>
+      <div class="stat-row odd"><span class="tag">MAG</span><span class="val">12</span></div>
+      <div class="stat-row even"><span class="tag">SKL</span><span class="val">22</span></div>
+      <div class="stat-row odd"><span class="tag">SPD</span><span class="val">19</span></div>
+      <div class="stat-row even"><span class="tag">LCK</span><span class="val">17</span></div>
+      <div class="stat-row odd"><span class="tag">DEF</span><span class="val">21</span></div>
+      <div class="stat-row even"><span class="tag">RES</span><span class="val">10</span></div>
+      <div class="stat-row odd"><span class="tag">MOV</span><span class="val">5</span></div>
+      <div class="inv-bar">Masamune &nbsp;&nbsp; Mt 14 &nbsp; Hit 95</div>
+    </div>
+    <div class="stat-portrait-col">
+      <div class="portrait-frame">
+        <div class="portrait-inner">
+          <div class="symbol">♛</div>
+          <div class="class-name">Daimyo</div>
+        </div>
+      </div>
+      <div class="hp-line">HP &nbsp; 70 / 70</div>
+    </div>
+    <div class="close-hint">Tap or press any key to close</div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>With a portrait file added</strong> (e.g.
+  <code>assets/portraits/nobunaga.png</code>), the giant ♛ symbol on the
+  right gets replaced by the actual image, scaled to fill the square frame.
+  Everything else stays identical.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2>2. Battle UI (mid-game on Chapter 1)</h2>
+<p>Top bar shows turn/chapter/phase. Info panel (bottom-right) shows the
+unit under the cursor. The map fills the rest of the screen with the
+camera following the cursor.</p>
+
+<div class="screen">
+  <div class="battle-screen">
+    <div class="top-bar">
+      <div class="turn">Turn 3</div>
+      <div class="chapter">Ch.1 — Owari Plains</div>
+      <div class="phase">Player Phase</div>
+    </div>
+
+    <div class="grid-container">
+      <div class="grid">
+        <!-- Chapter 1 actual tile data: 15x10 -->
+        <!-- Row 0 -->
+        <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t1"></div><div class="tile t2"></div><div class="tile t2"></div><div class="tile t2"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div>
+        <!-- Row 1 -->
+        <div class="tile t0"></div><div class="tile t6"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t2"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t6"></div><div class="tile t0"></div><div class="tile t0"></div>
+        <!-- Row 2: river crossing road -->
+        <div class="tile t0"></div><div class="tile t0"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t4"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t0"></div><div class="tile t0"></div>
+        <!-- Row 3 -->
+        <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t3"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t5"></div><div class="tile t0"></div>
+        <!-- Row 4 -->
+        <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t3"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div>
+        <!-- Row 5 -->
+        <div class="tile t1"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t5"></div><div class="tile t0"></div><div class="tile t3"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div>
+        <!-- Row 6 -->
+        <div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t2"></div><div class="tile t2"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t3"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div>
+        <!-- Row 7 -->
+        <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t2"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t4"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t6"></div><div class="tile t0"></div><div class="tile t7"><div class="seize"></div></div>
+        <!-- Row 8 -->
+        <div class="tile t0"></div><div class="tile t0"></div><div class="tile t6"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t8"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t7"></div>
+        <!-- Row 9 -->
+        <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t7"></div>
+
+        <!-- Player units -->
+        <div class="unit player" style="left: 35px; top: 260px;">♛<div class="hp"></div></div>
+        <div class="unit player" style="left: 35px; top: 228px;">★<div class="hp"></div></div>
+        <div class="unit player" style="left: 3px; top: 196px;">✦<div class="hp"></div></div>
+
+        <!-- Enemy units -->
+        <div class="unit enemy" style="left: 388px; top: 68px;">▲<div class="hp"></div></div>
+        <div class="unit enemy" style="left: 420px; top: 132px;">▲<div class="hp"></div></div>
+        <div class="unit enemy" style="left: 388px; top: 164px;">▲<div class="hp"></div></div>
+        <div class="unit enemy" style="left: 356px; top: 100px;">♞<div class="hp"></div></div>
+        <div class="unit enemy" style="left: 452px; top: 164px;">➶<div class="hp"></div></div>
+        <div class="unit enemy" style="left: 420px; top: 196px;">★<div class="hp"></div></div>
+
+        <!-- Movement overlay (selected player unit moving) -->
+        <div class="move-overlay" style="left: 32px; top: 192px;"></div>
+        <div class="move-overlay" style="left: 64px; top: 192px;"></div>
+        <div class="move-overlay" style="left: 96px; top: 192px;"></div>
+        <div class="move-overlay" style="left: 32px; top: 224px;"></div>
+        <div class="move-overlay" style="left: 64px; top: 224px;"></div>
+        <div class="move-overlay" style="left: 96px; top: 224px;"></div>
+        <div class="move-overlay" style="left: 64px; top: 256px;"></div>
+        <div class="move-overlay" style="left: 96px; top: 256px;"></div>
+
+        <!-- Cursor on Hideyoshi -->
+        <div class="cursor" style="left: 32px; top: 224px;"></div>
+      </div>
+    </div>
+
+    <div class="info-panel">
+      <div class="name">Toyotomi Hideyoshi</div>
+      <div class="class-line">Samurai &nbsp;Lv.7</div>
+      <div class="hp-bar"><div class="hp-fill"></div></div>
+      <div>HP 45 / 60</div>
+      <table>
+        <tr><td class="k">STR</td><td>17</td><td class="k">SKL</td><td>19</td></tr>
+        <tr><td class="k">SPD</td><td>20</td><td class="k">LCK</td><td>22</td></tr>
+        <tr><td class="k">DEF</td><td>14</td><td class="k">RES</td><td>10</td></tr>
+      </table>
+      <div style="color:#888;font-size:11px;">Plain &nbsp;(+0 Def, +0 Avo)</div>
+      <div style="color:#bbb;margin-top:4px;">Steel Katana (E)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h2>3. Map View — Chapter 1 "Owari Plains" (15×10)</h2>
+<p>Same actual tile data as in <code>chapters.gd</code>. The river splits
+the map; the road bridge is the main crossing; the gold square at (14,7)
+is the seize point Nobunaga must capture.</p>
+
+<div class="screen map-overview">
+  <div class="grid">
+    <!-- (same tile layout repeated, simpler view) -->
+    <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t1"></div><div class="tile t2"></div><div class="tile t2"></div><div class="tile t2"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div>
+    <div class="tile t0"></div><div class="tile t6"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t2"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t6"></div><div class="tile t0"></div><div class="tile t0"></div>
+    <div class="tile t0"></div><div class="tile t0"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t4"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t8"></div><div class="tile t0"></div><div class="tile t0"></div>
+    <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t3"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t5"></div><div class="tile t0"></div>
+    <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t3"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div>
+    <div class="tile t1"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t5"></div><div class="tile t0"></div><div class="tile t3"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div>
+    <div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t2"></div><div class="tile t2"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t3"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div>
+    <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t2"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t4"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t6"></div><div class="tile t0"></div><div class="tile t7"><div class="seize"></div></div>
+    <div class="tile t0"></div><div class="tile t0"></div><div class="tile t6"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t8"></div><div class="tile t0"></div><div class="tile t1"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t7"></div>
+    <div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t0"></div><div class="tile t7"></div>
+  </div>
+</div>
+
+<pre class="legend">
+Terrain legend (from constants.gd TERRAIN_COLORS):
+  PLAIN     light green     +0 def, +0 avo, move 1
+  FOREST    dark green      +1 def, +20 avo, move 2
+  MOUNTAIN  brown           +2 def, +30 avo, move 4
+  RIVER     blue            +0 def, +10 avo, move 3 (impassable to most)
+  BRIDGE    light brown     +0 def, +0 avo, move 1
+  FORT      grey-brown      +2 def, +20 avo, heals each turn
+  VILLAGE   tan             +1 def, +10 avo
+  CASTLE    purple-grey     +3 def, +30 avo, heals (seize target)
+  ROAD      pale tan        +0 def, +0 avo, fastest path
+  Gold tint = seize point objective
+</pre>
+
+<h2>What's missing from these mockups</h2>
+<ul>
+  <li>Animations: cursor pulses, units slide-walk along their move path,
+      damage popups float up, phase banners sweep across the screen.</li>
+  <li>Procedural terrain noise: each tile has a slight per-tile color
+      shift via <code>sin(x*3.7+y*2.3)</code> for visual variation
+      (subtle, omitted from mockup).</li>
+  <li>Combat animation overlay: dimmed background with attacker/defender
+      portraits and a damage tally — appears briefly when units fight.</li>
+  <li>Real fonts: Godot uses its default sans-serif unless you set a
+      theme font. The mockup uses browser serif as a stand-in.</li>
+</ul>
+
+</body>
+</html>
